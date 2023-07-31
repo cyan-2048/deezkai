@@ -1,6 +1,6 @@
 {
-	"name": "Preact App",
-	"description": "A starter template for Preact and TypeScript.",
+	"name": "DeezKai",
+	"description": "Deezer Downloader for KaiOS",
 	"version": "1.0.0",
 	"launch_path": "/index.html",
 	"theme": "#fff",
@@ -21,10 +21,18 @@
 	},
 	"origin": "app://preact-app.cyankindasus.com",
 	"type": "privileged",
-	"permissions": {},
+	"permissions": {
+		"systemXHR": {
+			"description": "Required to access Deezer's Server"
+		},
+		"video-capture": {
+			"description": "Reading Codes using the Camera"
+		},
+		"desktop-notification": {}
+	},
 	"locales": {
 		"en-US": {
-			"name": "Preact App",
+			"name": "DeezKai",
 			"subtitle": "A starter template for Preact and TypeScript.",
 			"description": "A starter template for Preact and TypeScript."
 		}

@@ -1,10 +1,11 @@
 import { defineConfig } from "vite";
 import preact from "@preact/preset-vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 import polyfillKaiOS from "./scripts/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [preact(), polyfillKaiOS()],
+	plugins: [tsconfigPaths(), preact(), polyfillKaiOS()],
 	server: {
 		port: 3000,
 	},
