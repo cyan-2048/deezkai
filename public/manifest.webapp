@@ -6,7 +6,6 @@
 	"theme": "#fff",
 	"theme_color": "#fff",
 	"background_color": "#fff",
-	"fullscreen": "true",
 	"chrome": {
 		"statusbar": "overlap"
 	},
@@ -28,7 +27,13 @@
 		"video-capture": {
 			"description": "Reading Codes using the Camera"
 		},
-		"desktop-notification": {}
+		"desktop-notification": {},
+		"mobiledata": {
+			"description": "Use mobile data"
+		},
+		"wifidata": {
+			"description": "Use wifi data"
+		}
 	},
 	"locales": {
 		"en-US": {

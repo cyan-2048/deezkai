@@ -5,10 +5,33 @@
 // @description  try to take over the world!
 // @author       You
 // @match        http://localhost:3000/
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=undefined.localhost
+// @match        *://*.deezer.com/*
 // @grant        GM.xmlHttpRequest
 // @grant        unsafeWindow
+// @grant        window.focus
+// @grant        GM.cookie
 // ==/UserScript==
+
+(function () {
+	"use strict";
+
+	unsafeWindow.unsafeFetch = (...args) => {
+		console.log("unsafeFetch", ...args);
+		return GM_fetch(...args);
+	};
+	unsafeWindow.unsafeFocus = () => window.focus();
+	// Your code here...
+
+	unsafeWindow.GM_cookie = GM.cookie;
+
+	const originalAudio = unsafeWindow.Audio;
+
+	unsafeWindow.Audio = function () {
+		const audio = new originalAudio(...arguments);
+		console.log("Audio created", audio);
+		return audio;
+	};
+})();
 
 var GM_fetch = (function () {
 	"use strict";
@@ -128,7 +151,7 @@ var GM_fetch = (function () {
 		}
 		return await XHR(request, init, data);
 	}
-	function XHR(request, init, data) {
+	function XHR(request, init = {}, data) {
 		return new Promise((resolve, reject) => {
 			if (request.signal && request.signal.aborted) {
 				return reject(new DOMException("Aborted", "AbortError"));
@@ -170,14 +193,4 @@ var GM_fetch = (function () {
 	}
 
 	return GM_fetch;
-})();
-
-(function () {
-	"use strict";
-
-	unsafeWindow.unsafeFetch = (...args) => {
-		console.log("unsafeFetch", ...args);
-		return GM_fetch(...args);
-	};
-	// Your code here...
 })();

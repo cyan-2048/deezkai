@@ -8,7 +8,7 @@ import "core-js/actual/array/flat";
 import "core-js/actual/array/find-last";
 import "core-js/actual/array/to-sorted";
 import "core-js/actual/string/match-all";
-import { getAlbumTracks, getUser, initDeezerApi } from "d-fi-core";
+import { decryptDownload, getAlbumTracks, getTrackDownloadUrl, getUser, initDeezerApi } from "d-fi-core";
 import { arl } from "@settings";
 
 render(<App />, document.getElementById("app") as HTMLElement);
@@ -18,14 +18,62 @@ render(<App />, document.getElementById("app") as HTMLElement);
 		import("preact/debug");
 		import("./dev");
 	} else {
-		console.log(
-			await initDeezerApi(
-				"e3f058fb4295c9cfffe0d3017ad438ecec72417a41348286c643bea7b0a71fe2ddeb2cb9fbfb493c6cbf532123447f4f87294806622a79a074a762e49e70f77d834084024a345240a1529089174db8e9ca95903b183c78e19f160ac2f7ceb832"
-			)
-		);
+		import("./dev");
+		console.log(await initDeezerApi(arl.peek()));
 
 		console.log(await getUser());
 
-		console.log(await getAlbumTracks("221543452"));
+		const tracks = await getAlbumTracks("221543452");
+
+		for (let track of tracks.data) {
+			const trackData = await getTrackDownloadUrl(track, 1);
+			if (trackData) {
+				console.log("isEnc", trackData.isEncrypted);
+				// Download track
+
+				// @ts-ignore
+				const xhr = new XMLHttpRequest({ mozSystem: true });
+
+				xhr.open("GET", trackData.trackUrl);
+				xhr.responseType = "arraybuffer";
+
+				xhr.onprogress = (event) => {
+					if (event.lengthComputable) {
+						const percentage = Math.round((event.loaded * 100) / event.total);
+						console.log("Downloading:", percentage);
+					}
+				};
+
+				xhr.send();
+
+				await new Promise((res) => {
+					xhr.addEventListener("load", async () => {
+						const result = xhr.response;
+						console.log(result);
+						console.log("Downloading from Deezer was a success!!!");
+
+						console.log("Decrypting");
+						// Decrypt track if needed
+						const outFile = trackData.isEncrypted
+							? await decryptDownload(result, track.SNG_ID, (n) => {
+									console.log("Decrypting", n);
+							  })
+							: result;
+						console.log("Decrypting done", outFile);
+
+						res(0);
+
+						const audio = new Audio();
+						const blob = new Blob([outFile]);
+						const url = URL.createObjectURL(blob);
+						audio.src = url;
+						audio.play();
+					});
+				});
+
+				// Save file to disk
+				// fs.writeFileSync(track.SNG_TITLE + ".mp3", outFile);
+			}
+		}
 	}
 })();

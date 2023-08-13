@@ -23,3 +23,19 @@ export const downloadAlbumCover = async (albumPicture: string, albumCoverSize: c
 		return null;
 	}
 };
+
+/**
+ * brings back focus to the app
+ */
+export async function focusApp(): Promise<void> {
+	if (import.meta.env.DEV) {
+		try {
+			(window as any).unsafeFocus();
+		} catch (e) {
+			alert("focus");
+		}
+	} else if ("mozApps" in navigator) {
+		// @ts-ignore
+		return navigator.mozApps.getSelf().then((e) => void e.launch());
+	}
+}

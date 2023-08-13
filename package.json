@@ -10,6 +10,7 @@
 	},
 	"dependencies": {
 		"@preact/signals": "^1.1.5",
+		"@ungap/event-target": "^0.2.4",
 		"d-fi-core": "github:cyan-2048/d-fi-core",
 		"preact": "^10.13.1"
 	},
