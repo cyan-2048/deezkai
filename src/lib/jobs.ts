@@ -1,5 +1,6 @@
 // this is the jobs thing, this will handle the "jobs"
 
+import { sleep } from "@utils";
 import EventEmitter from "./EventEmitter";
 
 class Ticker extends EventEmitter {
@@ -9,8 +10,6 @@ class Ticker extends EventEmitter {
 }
 
 const ticker = new Ticker();
-
-const downloading = [];
 
 class DefferedPromise<T = any> {
 	resolve!: (value: T) => void;
@@ -37,13 +36,14 @@ class Job<T = unknown> extends EventEmitter<"done" | "progress" | "state"> {
 	done(output: T) {
 		this.#deffered.resolve(output);
 		this.emit("done", output);
+		this.setState("done");
 	}
 
 	progress(progress: number) {
 		this.emit("progress", progress);
 	}
 
-	currentState: JobStates = "pending";
+	private currentState: JobStates = "pending";
 
 	get state() {
 		return this.currentState;
@@ -52,12 +52,27 @@ class Job<T = unknown> extends EventEmitter<"done" | "progress" | "state"> {
 	setState(state: JobStates) {
 		this.emit("state", state);
 	}
-}
 
-export class DownloadJob extends Job<ArrayBuffer> {
-	constructor(url: string) {
-		super();
-
-		this.setState("pending");
+	remove(arr: Job<T>[]) {
+		arr.splice(arr.indexOf(this), 1);
 	}
 }
+
+const downloading: Download[] = [];
+export class Download extends Job<ArrayBuffer> {
+	constructor(private url: string) {
+		super();
+		downloading.push(this);
+		ticker.tick();
+	}
+
+	async start() {
+		this.setState("running");
+		await sleep(3000);
+
+		this.done(new ArrayBuffer(0));
+		this.remove(downloading);
+	}
+}
+
+ticker.on("tick", () => {});

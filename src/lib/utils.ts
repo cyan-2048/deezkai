@@ -39,3 +39,5 @@ export async function focusApp(): Promise<void> {
 		return navigator.mozApps.getSelf().then((e) => void e.launch());
 	}
 }
+
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
