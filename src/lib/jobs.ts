@@ -56,22 +56,40 @@ class Job<T = unknown> extends EventEmitter<"done" | "progress" | "state"> {
 	remove(arr: Job<T>[]) {
 		arr.splice(arr.indexOf(this), 1);
 	}
+
+	push(arr: Job<T>[]) {
+		arr.push(this);
+	}
 }
 
 const downloading: Download[] = [];
+const pendingDownloads: Download[] = [];
+
 export class Download extends Job<ArrayBuffer> {
 	constructor(private url: string) {
 		super();
-		downloading.push(this);
+		this.push(pendingDownloads);
 		ticker.tick();
 	}
 
 	async start() {
 		this.setState("running");
+		// remove from pending
+		this.remove(pendingDownloads);
+
+		// add to downloading
+		this.push(downloading);
+
+		// simulate downloading
 		await sleep(3000);
 
-		this.done(new ArrayBuffer(0));
+		// remove from downloading
 		this.remove(downloading);
+
+		// downloading is done
+		this.done(new ArrayBuffer(0));
+
+		ticker.tick();
 	}
 }
 
