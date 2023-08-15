@@ -1,15 +1,10 @@
 // this is the jobs thing, this will handle the "jobs"
 
-import { sleep } from "@utils";
+import { randomInt, sleep } from "@utils";
 import EventEmitter from "./EventEmitter";
 
-class Ticker extends EventEmitter {
-	tick() {
-		this.emit("tick");
-	}
-}
-
-const ticker = new Ticker();
+const ticker = new EventEmitter();
+const tick = ticker.emit.bind(ticker, "tick");
 
 class DefferedPromise<T = any> {
 	resolve!: (value: T) => void;
@@ -24,9 +19,17 @@ class DefferedPromise<T = any> {
 	}
 }
 
+async function simulateProgress(ms: number, cb: Function) {
+	const start = Date.now();
+	while (Date.now() - start < ms) {
+		await sleep(100);
+		cb(Math.min(100, Math.floor(((Date.now() - start) / ms) * 100)));
+	}
+}
+
 type JobStates = "pending" | "running" | "done";
 
-class Job<T = unknown> extends EventEmitter<"done" | "progress" | "state"> {
+class Job<T = unknown, R extends Record<string, any> = any> extends EventEmitter<"done" | "progress" | "state", R> {
 	#deffered = new DefferedPromise<T>();
 
 	get promise() {
@@ -50,6 +53,7 @@ class Job<T = unknown> extends EventEmitter<"done" | "progress" | "state"> {
 	}
 
 	setState(state: JobStates) {
+		this.currentState = state;
 		this.emit("state", state);
 	}
 
@@ -65,11 +69,11 @@ class Job<T = unknown> extends EventEmitter<"done" | "progress" | "state"> {
 const downloading: Download[] = [];
 const pendingDownloads: Download[] = [];
 
-export class Download extends Job<ArrayBuffer> {
+export class Download extends Job<ArrayBuffer, { progress: number; state: string }> {
 	constructor(private url: string) {
 		super();
 		this.push(pendingDownloads);
-		ticker.tick();
+		tick();
 	}
 
 	async start() {
@@ -81,7 +85,7 @@ export class Download extends Job<ArrayBuffer> {
 		this.push(downloading);
 
 		// simulate downloading
-		await sleep(3000);
+		await simulateProgress(randomInt(2000, 1000), this.progress.bind(this));
 
 		// remove from downloading
 		this.remove(downloading);
@@ -89,8 +93,48 @@ export class Download extends Job<ArrayBuffer> {
 		// downloading is done
 		this.done(new ArrayBuffer(0));
 
-		ticker.tick();
+		tick();
 	}
 }
 
-ticker.on("tick", () => {});
+const decrypting: Decrypt[] = [];
+const pendingDecrypt: Decrypt[] = [];
+
+export class Decrypt extends Job<ArrayBuffer> {
+	constructor(private data: ArrayBuffer) {
+		super();
+		this.push(pendingDecrypt);
+		tick();
+	}
+
+	async start() {
+		this.remove(pendingDecrypt);
+		this.push(decrypting);
+
+		this.setState("running");
+
+		// simulate decrypting
+		await simulateProgress(randomInt(2000, 1000), this.progress.bind(this));
+
+		// decrypting is done
+		this.done(new ArrayBuffer(0));
+
+		// remove from decrypting
+		this.remove(decrypting);
+
+		tick();
+	}
+}
+
+ticker.on("tick", () => {
+	// if there's no longer any decrypting objects & if there's no longer any downloads happening
+	if (!decrypting.length && !(downloading.length + pendingDownloads.length)) {
+		// decrypt one at a time
+		pendingDecrypt[0]?.start();
+	}
+
+	// if there is less than 3 downloading, start one
+	if (downloading.length < 3) {
+		pendingDownloads[0]?.start();
+	}
+});

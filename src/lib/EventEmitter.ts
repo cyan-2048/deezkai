@@ -1,14 +1,14 @@
 import EventTarget from "@ungap/event-target";
 
-export default class EventEmitter<T extends string = string> extends EventTarget {
-	on(type: T, callback: EventListenerOrEventListenerObject) {
-		this.addEventListener(type, callback);
+export default class EventEmitter<T extends string = string, R extends Record<string, any> = any> extends EventTarget {
+	on<K extends T>(type: K, callback: (res: CustomEvent<R[K]>) => void) {
+		this.addEventListener(type, callback as EventListener);
 	}
 	off(type: T, callback: EventListenerOrEventListenerObject) {
 		this.removeEventListener(type, callback);
 	}
-	once(type: T, callback: EventListenerOrEventListenerObject) {
-		this.addEventListener(type, callback, { once: true });
+	once<K extends T>(type: K, callback: (res: CustomEvent<R[K]>) => void) {
+		this.addEventListener(type, callback as EventListener, { once: true });
 	}
 	emit(type: T, detail?: any) {
 		this.dispatchEvent(new CustomEvent(type, { detail }));

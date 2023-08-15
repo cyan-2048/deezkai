@@ -50,6 +50,7 @@ export const artistSeparator = $<ArtistSeparator>(ArtistSeparator.Comma);
 export const artistSeparatorSpace = $(true);
 export const albumTrackName = $("number - title");
 export const trackName = $("artist - title");
+export const folderPath = $("DeezKai/");
 
 interface TrackNameMetadata
 	extends Partial<{
@@ -67,10 +68,9 @@ export const metadataKeys = Object.freeze(["title", "album", "artist", "number",
 
 const metadataKeysRegex = /title|album|artist|number|contributors|date|genre|trackid/g;
 
-export function generateAlbumTrackName(metadata: TrackNameMetadata) {
-	return albumTrackName.peek().replace(metadataKeysRegex, (key) => String(metadata[key as keyof TrackNameMetadata] ?? ""));
+function generateName(name: Signal<string>, metadata: TrackNameMetadata) {
+	return name.peek().replace(metadataKeysRegex, (key) => String(metadata[key as keyof TrackNameMetadata] ?? ""));
 }
 
-export function generateTrackName(metadata: TrackNameMetadata) {
-	return trackName.peek().replace(metadataKeysRegex, (key: any) => String(metadata[key as keyof TrackNameMetadata] ?? ""));
-}
+export const generateAlbumTrackName = generateName.bind(null, albumTrackName);
+export const generateTrackName = generateName.bind(null, trackName);
