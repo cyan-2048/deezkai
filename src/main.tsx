@@ -1,6 +1,8 @@
 import { render } from "preact";
 import { App } from "./App";
 
+import "./main.css";
+
 /**
  * import polyfills manually
  */

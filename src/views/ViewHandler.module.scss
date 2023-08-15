@@ -1,0 +1,63 @@
+.view {
+	width: 100vw;
+	height: 100vh;
+	position: fixed;
+	top: 0;
+	left: 0;
+	animation-fill-mode: forwards;
+	animation-duration: 0.5s;
+	animation-timing-function: cubic-bezier(0.46, 0.03, 0.52, 0.96);
+	overflow: hidden;
+}
+
+.toLeft {
+	animation-name: moveToLeft;
+}
+
+.toRight {
+	animation-name: moveToRight;
+}
+
+.fromLeft {
+	animation-name: moveFromLeft;
+}
+
+.fromRight {
+	animation-name: moveFromRight;
+}
+
+@keyframes moveToLeft {
+	0% {
+		left: 0; /* Start position */
+	}
+	100% {
+		left: -100vw;
+	}
+}
+
+@keyframes moveToRight {
+	0% {
+		left: 0;
+	}
+	100% {
+		left: 100vw;
+	}
+}
+
+@keyframes moveFromLeft {
+	0% {
+		left: -100vw;
+	}
+	100% {
+		left: 0;
+	}
+}
+
+@keyframes moveFromRight {
+	0% {
+		left: 100vw;
+	}
+	100% {
+		left: 0;
+	}
+}

@@ -1,84 +1,63 @@
-import { useEffect, useState } from "preact/hooks";
-import preactLogo from "./assets/preact.svg";
-import viteLogo from "/vite.svg";
-import { Decrypt, Download } from "./lib/jobs";
-import { sleep } from "@utils";
+import { useEffect, useMemo } from "preact/hooks";
+import SoftKeys, { setSoftkeys } from "./views/SoftKeys";
+import ViewHandler, { back, forward, useInView } from "./views/ViewHandler";
+import { register } from "./lib/keys";
+import Home from "./views/Home";
 
-function Progress() {
-	const [state, setState] = useState("Downloading");
-	const [progress, setProgress] = useState(0);
-	const [jobState, setJobState] = useState("unknown");
+function getRandomColor() {
+	const letters = "0123456789ABCDEF";
+	let color = "#";
+
+	for (let i = 0; i < 6; i++) {
+		color += letters[Math.floor(Math.random() * 16)];
+	}
+
+	return color;
+}
+
+function TestView() {
+	const inView = useInView();
+
+	const id = useMemo(() => getRandomColor(), []);
 
 	useEffect(() => {
-		const download = new Download("1");
-		setJobState(download.state);
-
-		download.on("progress", (progress) => {
-			setProgress(progress.detail);
-		});
-
-		download.on("state", (state) => {
-			setJobState(download.state);
-		});
-
-		download.promise.then(async (data) => {
-			await sleep(1500);
-
-			setProgress(0);
-			setState("Decrypting");
-
-			const decrypt = new Decrypt(data);
-			setJobState(decrypt.state);
-
-			decrypt.on("state", (state) => {
-				setJobState(decrypt.state);
+		console.log("inView", inView);
+		if (inView) {
+			const registeredKey = register("Enter", () => {
+				forward(<TestView />);
 			});
 
-			decrypt.on("progress", (progress) => {
-				setProgress(progress.detail);
-			});
-		});
-	}, []);
+			return () => registeredKey.unregister();
+		}
+	}, [inView]);
 
 	return (
-		<div class="progress">
-			{state} - {progress}% - {jobState}
-		</div>
+		<main style={{ height: "100vh", padding: 5, backgroundColor: id }}>
+			{`The quick brown fox jumps over the lazy dog.
+			`.repeat(8)}
+		</main>
 	);
 }
 
-export function App() {
-	const [count, setCount] = useState(0);
+forward(<Home />, true, ["Options", "Open", "Exit"]);
 
+export function App() {
 	useEffect(() => {
-		const handle = () => setCount((count) => count + 1);
-		window.addEventListener("keydown", handle);
-		return () => window.removeEventListener("keydown", handle);
+		const registeredKey = register("Backspace", (e) => {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			e.stopPropagation();
+
+			back();
+		});
+
+		return () => registeredKey.unregister();
 	}, []);
 
 	return (
-		<>
-			<div>
-				<a href="https://vitejs.dev" target="_blank">
-					<img src={viteLogo} class="logo" alt="Vite logo" />
-				</a>
-				<a href="https://preactjs.com" target="_blank">
-					<img src={preactLogo} class="logo preact" alt="Preact logo" />
-				</a>
-			</div>
-			<h1>Vite + Preact</h1>
-			<div class="card">
-				<button onClick={() => setCount((count) => count + 1)}>count is {count}</button>
-				<p>
-					Edit <code>src/app.tsx</code> and save to test HMR
-				</p>
-			</div>
-			{Array(10)
-				.fill(0)
-				.map((_, i) => (
-					<Progress key={i} />
-				))}
-			<p class="read-the-docs">Click on the Vite and Preact logos to learn more</p>
-		</>
+		<main>
+			<ViewHandler />
+			<SoftKeys />
+		</main>
 	);
 }

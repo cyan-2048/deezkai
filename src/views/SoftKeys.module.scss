@@ -1,0 +1,23 @@
+.softkeys {
+	height: 30px;
+	width: 100vw;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	display: flex;
+	box-sizing: border-box;
+	background: linear-gradient(to top, transparent 35%, hsl(220, 7.7%, 22.9%) 100%);
+	background-color: hsl(210, 3.4%, 11.4%);
+
+	.softkey {
+		padding: 5px;
+		&:nth-child(2) {
+			text-align: center;
+		}
+
+		&:nth-child(3) {
+			text-align: right;
+		}
+		width: 33.33%;
+	}
+}
