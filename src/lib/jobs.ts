@@ -100,8 +100,32 @@ export class Download extends Job<ArrayBuffer, { progress: number; state: string
 const decrypting: Decrypt[] = [];
 const pendingDecrypt: Decrypt[] = [];
 
+const decryptWorker = new Worker(new URL("./decrypt.ts", import.meta.url), {
+	type: "module",
+});
+
+decryptWorker.onmessage = (e) => console.log(e);
+
+async function waitForWorker(worker: Worker, verify?: (e: MessageEvent) => boolean) {
+	return new Promise((res) => {
+		worker.addEventListener("message", (e) => {
+			if (!verify || verify(e)) {
+				res(e);
+			}
+		});
+	});
+}
+
+function handleProgressEvent(worker: Worker, progress: (e: number) => void, verify?: (e: any) => boolean) {
+	worker.addEventListener("message", function e({ data }) {
+		if ((!verify || verify(data)) && "progress" in data) {
+			progress(data.progress);
+		}
+	});
+}
+
 export class Decrypt extends Job<ArrayBuffer> {
-	constructor(private data: ArrayBuffer) {
+	constructor(private buffer: ArrayBuffer, private trackID: string) {
 		super();
 		this.push(pendingDecrypt);
 		tick();
@@ -113,11 +137,17 @@ export class Decrypt extends Job<ArrayBuffer> {
 
 		this.setState("running");
 
-		// simulate decrypting
-		await simulateProgress(randomInt(2000, 1000), this.progress.bind(this));
+		// send buffer to worker
+		decryptWorker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
+
+		// handle progress events
+		handleProgressEvent(decryptWorker, this.progress.bind(this), (data) => data.trackID == this.trackID);
+
+		// too lazy to add type-checking
+		const result: any = await waitForWorker(decryptWorker, ({ data }) => data?.done == this.trackID);
 
 		// decrypting is done
-		this.done(new ArrayBuffer(0));
+		this.done(result.buffer);
 
 		// remove from decrypting
 		this.remove(decrypting);

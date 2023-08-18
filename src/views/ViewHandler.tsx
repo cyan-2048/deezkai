@@ -1,7 +1,7 @@
 import { Signal, batch, signal } from "@preact/signals";
 import { Fragment, VNode, createContext } from "preact";
 import styles from "./ViewHandler.module.scss";
-import { useContext, useEffect } from "preact/hooks";
+import { EffectCallback, useContext, useEffect } from "preact/hooks";
 import { sleep } from "@utils";
 import { setSoftkeys } from "./SoftKeys";
 
@@ -31,7 +31,30 @@ export function useInView() {
 	return useContext(ViewContext).value;
 }
 
-export function forward(el: VNode, noAnimation?: boolean, softkeys?: string[]) {
+export function useInViewEffect(cb: EffectCallback) {
+	const inViewSignal = useContext(ViewContext);
+	useEffect(() => {
+		let unsub: (() => void) | void;
+		inViewSignal.subscribe((val) => {
+			if (val) {
+				unsub = cb();
+			} else {
+				unsub?.();
+				unsub = undefined;
+			}
+		});
+		return () => {
+			unsub?.();
+		};
+	}, []);
+}
+
+interface ForwardOptions {
+	noAnimation?: boolean;
+	softkeys?: string[];
+}
+
+export function forward(el: VNode, options?: ForwardOptions) {
 	const current = views.at(-1);
 
 	if (current) current.inView.value = false;
@@ -41,11 +64,18 @@ export function forward(el: VNode, noAnimation?: boolean, softkeys?: string[]) {
 		inView,
 		el: <ViewContext.Provider value={inView}>{el}</ViewContext.Provider>,
 		id: getID(),
-		noAnimation,
-		softkeys,
+		noAnimation: options?.noAnimation,
+		softkeys: options?.softkeys,
 	});
 
 	movement.value = [1];
+}
+
+export function replace(el: VNode, options: ForwardOptions) {
+	// get rid of last view
+	views.pop();
+	// don't animate
+	forward(el, { ...options, noAnimation: true });
 }
 
 export function back() {
@@ -79,17 +109,19 @@ export default function ViewHandler() {
 
 	const viewClass = styles.view + " ";
 
+	const animated = !currentView?.noAnimation;
+
 	return currentView ? (
 		<main class={viewClass}>
-			<div class={viewClass + (!currentView.noAnimation && (move ? styles.fromRight : styles.fromLeft)) || ""} key={currentView.id}>
+			<div class={viewClass + (animated && (move ? styles.fromRight : styles.fromLeft)) || ""} key={currentView.id}>
 				<Fragment key={currentView.id}>{currentView.el}</Fragment>
 			</div>
-			{!!move && viewBefore && (
+			{animated && !!move && viewBefore && (
 				<div class={viewClass + styles.toLeft} key={viewBefore.id}>
 					<Fragment key={viewBefore.id}>{viewBefore.el}</Fragment>
 				</div>
 			)}
-			{!move && previousView && (
+			{animated && !move && previousView && (
 				<div class={viewClass + styles.toRight} key={previousView.id}>
 					<Fragment key={previousView.id}>{previousView.el}</Fragment>
 				</div>

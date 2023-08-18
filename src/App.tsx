@@ -39,7 +39,10 @@ function TestView() {
 	);
 }
 
-forward(<Home />, true, ["Options", "Open", "Exit"]);
+forward(<Home />, {
+	noAnimation: true,
+	softkeys: ["Options", "Open", "Exit"],
+});
 
 export function App() {
 	useEffect(() => {
