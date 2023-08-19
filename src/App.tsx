@@ -45,18 +45,6 @@ forward(<Home />, {
 });
 
 export function App() {
-	useEffect(() => {
-		const registeredKey = register("Backspace", (e) => {
-			e.preventDefault();
-			e.stopImmediatePropagation();
-			e.stopPropagation();
-
-			back();
-		});
-
-		return () => registeredKey.unregister();
-	}, []);
-
 	return (
 		<main>
 			<ViewHandler />

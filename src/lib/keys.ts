@@ -9,6 +9,10 @@ interface RegisterOptions {
 	 * propagate the key event to the next registered key
 	 */
 	bubble?: boolean;
+	/**
+	 * prevent default behavior
+	 */
+	preventDefault?: boolean;
 }
 
 const registeredKeys: RegisteredKey[] = [];
@@ -20,10 +24,12 @@ interface CustomKeyboardEvent<T extends string = any> extends KeyboardEvent {
 class RegisteredKey<T extends string | string[] = any> {
 	bubble: boolean;
 	once: boolean;
+	preventDefault: boolean;
 
 	constructor(public key: T, public cb: (e: CustomKeyboardEvent<T extends string[] ? T[number] : T>) => any, options: RegisterOptions) {
 		this.bubble = options.bubble ?? true;
 		this.once = options.once ?? false;
+		this.preventDefault = options.preventDefault ?? false;
 		registeredKeys.unshift(this);
 	}
 
@@ -47,7 +53,7 @@ export function unregister(...keys: RegisteredKey[]) {
 	keys.forEach((e) => e.unregister());
 }
 
-document.addEventListener(
+window.addEventListener(
 	"keydown",
 	(e) => {
 		// loop through registeredKeys
@@ -56,6 +62,7 @@ document.addEventListener(
 			const registeredKey = registeredKeys[i];
 
 			if (Array.isArray(registeredKey.key) ? registeredKey.key.includes(e.key) : registeredKey.key === e.key) {
+				registeredKey.preventDefault && e.preventDefault();
 				registeredKey.trigger(e);
 
 				if (!registeredKey.bubble) {
@@ -63,6 +70,7 @@ document.addEventListener(
 				}
 			}
 		}
+		console.log("registeredKeys", registeredKeys);
 	},
 	true
 );

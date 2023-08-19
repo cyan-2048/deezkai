@@ -28,7 +28,7 @@ if (s.NodeList) NodeList.prototype.forEach ||= Array.prototype.forEach;
 		const Promise = s.Promise;
 
 		function dispatchUnhandledRejectionEvent(promise, reason) {
-			const event = document.createEvent("Event");
+			const event = new Event("Event");
 			Object.defineProperties(event, {
 				promise: {
 					value: promise,
@@ -41,7 +41,7 @@ if (s.NodeList) NodeList.prototype.forEach ||= Array.prototype.forEach;
 			});
 			event.initEvent("unhandledrejection", false, true);
 			s.dispatchEvent(event);
-			console.error(promise);
+			console.error(promise, reason);
 		}
 
 		var MyPromise = function (resolver) {

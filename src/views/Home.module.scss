@@ -5,6 +5,7 @@
 	height: 25px;
 	width: 100vw;
 	padding: 2.5px;
+	font-size: 17px;
 	text-align: center;
 }
 
@@ -13,6 +14,7 @@
 	width: 100vw;
 	background: linear-gradient(to top, transparent 15%, hsl(216, 10.2%, 9.6%) 100%);
 	background-color: hsl(220, 7.6%, 23.3%);
+	position: relative;
 }
 
 .item {
@@ -33,6 +35,12 @@
 			left: 50%;
 			transform: translate(-50%, -50%);
 			width: 32px;
+			transition: filter 0.2s;
+			filter: drop-shadow(0.1px 1.5px 0.1px rgba(0, 0, 0, 0.5));
+
+			&.iconFocus {
+				filter: drop-shadow(0px 0px 5px rgba(0, 0, 0, 0.5));
+			}
 		}
 	}
 
@@ -43,12 +51,12 @@
 		transform: translateY(-50%);
 
 		div:nth-child(1) {
-			font-size: 18px;
+			font-size: 19px;
 			font-weight: 800;
 		}
 
 		div:nth-child(2) {
-			font-size: 10px;
+			font-size: 11px;
 		}
 	}
 }
@@ -56,8 +64,9 @@
 .focus-item {
 	height: 66px;
 	width: 100vw;
-	position: fixed;
-	top: 25px;
+	position: absolute;
+	left: 0;
+	top: 0;
 	background: orange;
 	opacity: 0.65;
 	transition: top ease-out 0.2s;

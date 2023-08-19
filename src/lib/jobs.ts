@@ -40,6 +40,7 @@ class Job<T = unknown, R extends Record<string, any> = any> extends EventEmitter
 		this.#deffered.resolve(output);
 		this.emit("done", output);
 		this.setState("done");
+		this.cancelProgressEvent?.();
 	}
 
 	progress(progress: number) {
@@ -64,16 +65,82 @@ class Job<T = unknown, R extends Record<string, any> = any> extends EventEmitter
 	push(arr: Job<T>[]) {
 		arr.push(this);
 	}
+
+	private cancelProgressEvent: null | (() => void) = null;
+
+	handleProgressEvent(worker: Worker, verify?: (e: any) => boolean) {
+		if (this.cancelProgressEvent) {
+			this.cancelProgressEvent();
+		}
+
+		const e = ({ data }: MessageEvent) => {
+			if ((!verify || verify(data)) && "progress" in data) {
+				this.progress(data.progress);
+			}
+		};
+
+		worker.addEventListener("message", e);
+		this.cancelProgressEvent = () => worker.removeEventListener("message", e);
+	}
 }
 
 const downloading: Download[] = [];
 const pendingDownloads: Download[] = [];
 
-export class Download extends Job<ArrayBuffer, { progress: number; state: string }> {
-	constructor(private url: string) {
+const downloadWorker = new Worker(new URL("./download.ts", import.meta.url), {
+	type: "module",
+});
+
+let downloadWorkerReady = Promise.resolve();
+arl.subscribe(async (val) => {
+	const deffered = new DefferedPromise<void>();
+
+	downloadWorkerReady = deffered.promise;
+
+	const success = waitForWorker(downloadWorker, ({ data }) => data?.arl);
+	downloadWorker.postMessage({ arl: val });
+
+	await success;
+	deffered.resolve();
+});
+
+downloadWorker.onmessage = (e) => console.log(e);
+
+import { v4 as uuidv4 } from "uuid";
+import { arl, folderPath, storageName } from "@settings";
+import { DownloadOutput } from "./download";
+import { DeviceStorage, Storage } from "./chunkai";
+
+interface DownloadJobOutput extends DownloadOutput {
+	buffer: ArrayBuffer;
+}
+
+function readFile(file: Blob | File): Promise<ArrayBuffer> {
+	return new Promise((resolve, reject) => {
+		var fr = new FileReader();
+		fr.onload = () => {
+			resolve(fr.result as ArrayBuffer);
+		};
+		fr.onerror = reject;
+		fr.readAsArrayBuffer(file);
+	});
+}
+
+export class Download extends Job<DownloadJobOutput, { progress: number; state: string }> {
+	storage?: DeviceStorage;
+	id?: string;
+	filename?: string;
+
+	constructor(private trackID: string) {
 		super();
 		this.push(pendingDownloads);
 		tick();
+	}
+
+	async deleteFile() {
+		if (this.filename && this.storage) {
+			await Storage.delete(this.storage, this.filename);
+		}
 	}
 
 	async start() {
@@ -84,14 +151,26 @@ export class Download extends Job<ArrayBuffer, { progress: number; state: string
 		// add to downloading
 		this.push(downloading);
 
-		// simulate downloading
-		await simulateProgress(randomInt(2000, 1000), this.progress.bind(this));
+		const filename = (this.filename = `${folderPath.peek()}temp/${(this.id = uuidv4())}.bin`);
+
+		await downloadWorkerReady;
+
+		// handle progress events
+		this.handleProgressEvent(downloadWorker, (data) => data && data.progress && data.id == this.id);
+
+		const waiting = waitForWorker<DownloadOutput>(downloadWorker, ({ data }) => data && data.complete && data.id == this.id);
+		downloadWorker.postMessage({ trackID: this.trackID, filename, id: this.id, storageName: storageName.peek() });
+
+		const { data } = await waiting;
+
+		const storage = (this.storage = Storage.getStorageFromName(storageName.peek())!);
+		const outputFile = await Storage.get(storage, filename);
 
 		// remove from downloading
 		this.remove(downloading);
 
 		// downloading is done
-		this.done(new ArrayBuffer(0));
+		this.done({ ...data, buffer: await readFile(outputFile) });
 
 		tick();
 	}
@@ -106,21 +185,13 @@ const decryptWorker = new Worker(new URL("./decrypt.ts", import.meta.url), {
 
 decryptWorker.onmessage = (e) => console.log(e);
 
-async function waitForWorker(worker: Worker, verify?: (e: MessageEvent) => boolean) {
+async function waitForWorker<T = any>(worker: Worker, verify?: (e: MessageEvent) => boolean): Promise<MessageEvent<T>> {
 	return new Promise((res) => {
 		worker.addEventListener("message", (e) => {
 			if (!verify || verify(e)) {
 				res(e);
 			}
 		});
-	});
-}
-
-function handleProgressEvent(worker: Worker, progress: (e: number) => void, verify?: (e: any) => boolean) {
-	worker.addEventListener("message", function e({ data }) {
-		if ((!verify || verify(data)) && "progress" in data) {
-			progress(data.progress);
-		}
 	});
 }
 
@@ -141,13 +212,12 @@ export class Decrypt extends Job<ArrayBuffer> {
 		decryptWorker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
 
 		// handle progress events
-		handleProgressEvent(decryptWorker, this.progress.bind(this), (data) => data.trackID == this.trackID);
+		this.handleProgressEvent(decryptWorker, (data) => data.trackID == this.trackID);
 
-		// too lazy to add type-checking
-		const result: any = await waitForWorker(decryptWorker, ({ data }) => data?.done == this.trackID);
+		const { data } = await waitForWorker(decryptWorker, ({ data }) => data?.done == this.trackID);
 
 		// decrypting is done
-		this.done(result.buffer);
+		this.done(data.buffer);
 
 		// remove from decrypting
 		this.remove(decrypting);

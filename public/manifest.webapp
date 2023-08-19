@@ -6,14 +6,12 @@
 	"theme": "#fff",
 	"theme_color": "#fff",
 	"background_color": "#fff",
-	"chrome": {
-		"statusbar": "overlap"
-	},
 	"orientation": "default",
 	"icons": {
 		"56": "/icon56.png",
 		"112": "/icon112.png"
 	},
+	"fullscreen": "true",
 	"developer": {
 		"name": "cyan-2048",
 		"url": "https://github.com/cyan-2048/kaios-preact-starter"
@@ -33,6 +31,17 @@
 		},
 		"wifidata": {
 			"description": "Use wifi data"
+		},
+		"device-storage:music": { "access": "readwrite" },
+		"device-storage:sdcard": { "access": "readwrite" },
+		"audio-channel-normal": {
+			"description": "Needed to play this app's audio content on the normal channel"
+		},
+		"audio-channel-content": {
+			"description": "To play audio in background"
+		},
+		"volumemanager": {
+			"description": "To control system volume"
 		}
 	},
 	"locales": {

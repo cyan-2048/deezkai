@@ -39,6 +39,15 @@ export const enum ArtistSeparator {
 	Null,
 }
 
+function getDefaultStorage(): string {
+	if (import.meta.env.DEV) {
+		return "devmode";
+	} else {
+		// @ts-ignore
+		return navigator.getDeviceStorage("sdcard").storageName;
+	}
+}
+
 export const arl = $$(
 	"arl",
 	"e3f058fb4295c9cfffe0d3017ad438ecec72417a41348286c643bea7b0a71fe2ddeb2cb9fbfb493c6cbf532123447f4f87294806622a79a074a762e49e70f77d834084024a345240a1529080174db8e9ca95903b183c78e19f160ac2f7ceb832"
@@ -51,6 +60,7 @@ export const artistSeparatorSpace = $(true);
 export const albumTrackName = $("number - title");
 export const trackName = $("artist - title");
 export const folderPath = $("DeezKai/");
+export const storageName = $(getDefaultStorage());
 
 interface TrackNameMetadata
 	extends Partial<{

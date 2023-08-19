@@ -9,8 +9,10 @@
 	background: linear-gradient(to top, transparent 35%, hsl(220, 7.7%, 22.9%) 100%);
 	background-color: hsl(210, 3.4%, 11.4%);
 
+	font-size: 17px;
+
 	.softkey {
-		padding: 5px;
+		padding: 4px;
 		&:nth-child(2) {
 			text-align: center;
 		}
