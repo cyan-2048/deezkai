@@ -1,7 +1,13 @@
 // this is the jobs thing, this will handle the "jobs"
 
-import { randomInt, sleep } from "@utils";
+import { sleep } from "@utils";
 import EventEmitter from "./EventEmitter";
+import { v4 as uuidv4 } from "uuid";
+import { arl, folderPath, musicQuality, storageName } from "@settings";
+
+import { Chunkai, DeviceStorage, Storage } from "./chunkai";
+import { getTrackDownloadUrl, getTrackInfo, initDeezerApi } from "d-fi-core";
+import { trackType } from "d-fi-core/src/types";
 
 const ticker = new EventEmitter();
 const tick = ticker.emit.bind(ticker, "tick");
@@ -87,33 +93,9 @@ class Job<T = unknown, R extends Record<string, any> = any> extends EventEmitter
 const downloading: Download[] = [];
 const pendingDownloads: Download[] = [];
 
-const downloadWorker = new Worker(new URL("./download.ts", import.meta.url), {
-	type: "module",
-});
-
-let downloadWorkerReady = Promise.resolve();
 arl.subscribe(async (val) => {
-	const deffered = new DefferedPromise<void>();
-
-	downloadWorkerReady = deffered.promise;
-
-	const success = waitForWorker(downloadWorker, ({ data }) => data?.arl);
-	downloadWorker.postMessage({ arl: val });
-
-	await success;
-	deffered.resolve();
+	initDeezerApi(val);
 });
-
-downloadWorker.onmessage = (e) => console.log(e);
-
-import { v4 as uuidv4 } from "uuid";
-import { arl, folderPath, storageName } from "@settings";
-import { DownloadOutput } from "./download";
-import { DeviceStorage, Storage } from "./chunkai";
-
-interface DownloadJobOutput extends DownloadOutput {
-	buffer: ArrayBuffer;
-}
 
 function readFile(file: Blob | File): Promise<ArrayBuffer> {
 	return new Promise((resolve, reject) => {
@@ -126,7 +108,16 @@ function readFile(file: Blob | File): Promise<ArrayBuffer> {
 	});
 }
 
-export class Download extends Job<DownloadJobOutput, { progress: number; state: string }> {
+interface TrackInfoResult {
+	trackID: string;
+	track: trackType;
+	trackData?: { trackUrl: string; isEncrypted: boolean; fileSize: number };
+}
+
+interface DownloadResult extends TrackInfoResult {
+	buffer: ArrayBuffer;
+}
+export class Download extends Job<DownloadResult, { progress: number; state: string }> {
 	storage?: DeviceStorage;
 	id?: string;
 	filename?: string;
@@ -147,32 +138,49 @@ export class Download extends Job<DownloadJobOutput, { progress: number; state: 
 		this.setState("running");
 		// remove from pending
 		this.remove(pendingDownloads);
-
 		// add to downloading
 		this.push(downloading);
 
 		const filename = (this.filename = `${folderPath.peek()}temp/${(this.id = uuidv4())}.bin`);
 
-		await downloadWorkerReady;
+		const track = await getTrackInfo(this.trackID);
+		const trackData = await getTrackDownloadUrl(track, musicQuality.peek());
 
-		// handle progress events
-		this.handleProgressEvent(downloadWorker, (data) => data && data.progress && data.id == this.id);
+		if (!trackData) throw new Error("trackData is missing");
 
-		const waiting = waitForWorker<DownloadOutput>(downloadWorker, ({ data }) => data && data.complete && data.id == this.id);
-		downloadWorker.postMessage({ trackID: this.trackID, filename, id: this.id, storageName: storageName.peek() });
+		const chunkai = new Chunkai({
+			chunkByteLimit: 1048576,
+			storageName: storageName.peek(),
+			remoteFileUrl: trackData.trackUrl,
+			localFileUrl: filename,
+		});
 
-		const { data } = await waiting;
+		let _progress = 0;
 
-		const storage = (this.storage = Storage.getStorageFromName(storageName.peek())!);
-		const outputFile = await Storage.get(storage, filename);
+		chunkai.onProgress = ({ currentBytes, totalBytes }) => {
+			const currentProgress = Math.floor((currentBytes / totalBytes) * 100);
+			if (currentProgress > _progress) {
+				this.progress(_progress);
+				_progress = currentProgress;
+			}
+		};
+		chunkai.onComplete = async () => {
+			this.progress(100);
 
-		// remove from downloading
-		this.remove(downloading);
+			const storage = (this.storage = Storage.getStorageFromName(storageName.peek())!);
+			const outputFile = await Storage.get(storage, filename);
 
-		// downloading is done
-		this.done({ ...data, buffer: await readFile(outputFile) });
+			// remove from downloading
+			this.remove(downloading);
 
-		tick();
+			// downloading is done
+			this.done({ trackData, track, trackID: this.trackID, buffer: await readFile(outputFile) });
+			this.deleteFile();
+
+			tick();
+		};
+		chunkai.onError = (err) => console.log("error", err);
+		chunkai.start();
 	}
 }
 
@@ -183,13 +191,12 @@ const decryptWorker = new Worker(new URL("./decrypt.ts", import.meta.url), {
 	type: "module",
 });
 
-decryptWorker.onmessage = (e) => console.log(e);
-
 async function waitForWorker<T = any>(worker: Worker, verify?: (e: MessageEvent) => boolean): Promise<MessageEvent<T>> {
 	return new Promise((res) => {
-		worker.addEventListener("message", (e) => {
+		worker.addEventListener("message", function a(e) {
 			if (!verify || verify(e)) {
 				res(e);
+				worker.removeEventListener("message", a);
 			}
 		});
 	});
@@ -208,16 +215,15 @@ export class Decrypt extends Job<ArrayBuffer> {
 
 		this.setState("running");
 
-		// send buffer to worker
-		decryptWorker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
-
 		// handle progress events
 		this.handleProgressEvent(decryptWorker, (data) => data.trackID == this.trackID);
 
-		const { data } = await waitForWorker(decryptWorker, ({ data }) => data?.done == this.trackID);
+		const wait = waitForWorker(decryptWorker, ({ data }) => data?.done == this.trackID);
+		// send buffer to worker
+		decryptWorker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
 
 		// decrypting is done
-		this.done(data.buffer);
+		this.done((await wait).data.buffer);
 
 		// remove from decrypting
 		this.remove(decrypting);

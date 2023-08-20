@@ -1,4 +1,4 @@
-type Chunk = {
+export type Chunk = {
 	part: number;
 	startBytes: number;
 	endBytes: number;
@@ -14,7 +14,7 @@ type Options = {
 	chunkByteLimit?: number;
 };
 
-type Progress = {
+export type Progress = {
 	currentBytes: number;
 	totalBytes: number;
 };
@@ -72,11 +72,11 @@ export class Storage {
 	}
 }
 
-export const httpclient = new Worker(new URL("./httpclient.ts", import.meta.url), {
-	type: "module",
-});
+export type HttpClientOptions = {
+	chunkByteLimit: number;
+};
 
-export class HttpClient {
+class HttpClient {
 	private options: HttpClientOptions;
 	private xhr: XMLHttpRequest;
 
@@ -157,10 +157,6 @@ export class HttpClient {
 		return tmp.buffer;
 	}
 }
-
-type HttpClientOptions = {
-	chunkByteLimit: number;
-};
 
 export class Chunkai {
 	private options: Options;
