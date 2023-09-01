@@ -31,11 +31,16 @@ export function useInView() {
 	return useContext(ViewContext).value;
 }
 
+export function useInViewSignal() {
+	return useContext(ViewContext);
+}
+
 export function useInViewEffect(cb: EffectCallback) {
 	const inViewSignal = useContext(ViewContext);
 	useEffect(() => {
 		let unsub: (() => void) | void;
-		inViewSignal.subscribe((val) => {
+
+		const unsubSignal = inViewSignal.subscribe((val) => {
 			if (val) {
 				unsub = cb();
 			} else {
@@ -43,8 +48,10 @@ export function useInViewEffect(cb: EffectCallback) {
 				unsub = undefined;
 			}
 		});
+
 		return () => {
 			unsub?.();
+			unsubSignal();
 		};
 	}, []);
 }
@@ -116,7 +123,7 @@ export default function ViewHandler() {
 			<div class={viewClass + (animated && (move ? styles.fromRight : styles.fromLeft)) || ""} key={currentView.id}>
 				<Fragment key={currentView.id}>{currentView.el}</Fragment>
 			</div>
-			{animated && !!move && viewBefore && (
+			{animated && Boolean(move) && viewBefore && (
 				<div class={viewClass + styles.toLeft} key={viewBefore.id}>
 					<Fragment key={viewBefore.id}>{viewBefore.el}</Fragment>
 				</div>

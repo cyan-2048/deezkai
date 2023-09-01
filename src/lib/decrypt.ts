@@ -7,9 +7,14 @@ addEventListener("message", async (e: MessageEvent) => {
 		data: { trackID, buffer: data },
 	} = e;
 
-	const { buffer } = await decryptDownload(data, trackID, (n) => {
-		postMessage({ trackID, progress: n });
-	});
+	const { buffer } = await decryptDownload(
+		data,
+		trackID,
+		(n) => {
+			postMessage({ trackID, progress: n });
+		},
+		false
+	);
 
 	// @ts-ignore
 	postMessage({ done: trackID, buffer }, [buffer]);

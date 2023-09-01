@@ -8,6 +8,7 @@ import { arl, folderPath, musicQuality, storageName } from "@settings";
 import { Chunkai, DeviceStorage, Storage } from "./chunkai";
 import { getTrackDownloadUrl, getTrackInfo, initDeezerApi } from "d-fi-core";
 import { trackType } from "d-fi-core/src/types";
+import { AnyComponent } from "preact";
 
 const ticker = new EventEmitter();
 const tick = ticker.emit.bind(ticker, "tick");
@@ -35,7 +36,11 @@ async function simulateProgress(ms: number, cb: Function) {
 
 type JobStates = "pending" | "running" | "done";
 
-class Job<T = unknown, R extends Record<string, any> = any> extends EventEmitter<"done" | "progress" | "state", R> {
+type JobEvents = "done" | "progress" | "state";
+
+type JobEventsReturn = Record<JobEvents, any>;
+
+class Job<T = any, R extends Record<string, any> = any> extends EventEmitter<JobEvents | Extract<keyof R, string>, JobEventsReturn & Omit<R, JobEvents>> {
 	#deffered = new DefferedPromise<T>();
 
 	get promise() {
@@ -94,7 +99,9 @@ const downloading: Download[] = [];
 const pendingDownloads: Download[] = [];
 
 arl.subscribe(async (val) => {
-	initDeezerApi(val);
+	console.log("arl subscribed");
+	const e = await initDeezerApi(val);
+	console.log("init arl sucessful", e);
 });
 
 function readFile(file: Blob | File): Promise<ArrayBuffer> {
@@ -114,10 +121,10 @@ interface TrackInfoResult {
 	trackData?: { trackUrl: string; isEncrypted: boolean; fileSize: number };
 }
 
-interface DownloadResult extends TrackInfoResult {
+interface DownloadResult extends Required<TrackInfoResult> {
 	buffer: ArrayBuffer;
 }
-export class Download extends Job<DownloadResult, { progress: number; state: string }> {
+export class Download extends Job<DownloadResult, { progress: number; state: string; info: Required<TrackInfoResult> }> {
 	storage?: DeviceStorage;
 	id?: string;
 	filename?: string;
@@ -143,10 +150,12 @@ export class Download extends Job<DownloadResult, { progress: number; state: str
 
 		const filename = (this.filename = `${folderPath.peek()}temp/${(this.id = uuidv4())}.bin`);
 
-		const track = await getTrackInfo(this.trackID);
+		const trackID = this.trackID;
+		const track = await getTrackInfo(trackID);
 		const trackData = await getTrackDownloadUrl(track, musicQuality.peek());
 
 		if (!trackData) throw new Error("trackData is missing");
+		this.emit("info", { track, trackData, trackID });
 
 		const chunkai = new Chunkai({
 			chunkByteLimit: 1048576,
@@ -174,7 +183,7 @@ export class Download extends Job<DownloadResult, { progress: number; state: str
 			this.remove(downloading);
 
 			// downloading is done
-			this.done({ trackData, track, trackID: this.trackID, buffer: await readFile(outputFile) });
+			this.done({ trackData, track, trackID, buffer: await readFile(outputFile) });
 			this.deleteFile();
 
 			tick();
@@ -234,7 +243,7 @@ export class Decrypt extends Job<ArrayBuffer> {
 
 ticker.on("tick", () => {
 	// if there's no longer any decrypting objects & if there's no longer any downloads happening
-	if (!decrypting.length && !(downloading.length + pendingDownloads.length)) {
+	if (!decrypting.length) {
 		// decrypt one at a time
 		pendingDecrypt[0]?.start();
 	}

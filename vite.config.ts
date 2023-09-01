@@ -1,11 +1,11 @@
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunk, splitVendorChunkPlugin } from "vite";
 import preact from "@preact/preset-vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import polyfillKaiOS from "./scripts/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [tsconfigPaths(), preact(), polyfillKaiOS()],
+	plugins: [tsconfigPaths(), preact(), polyfillKaiOS(), splitVendorChunkPlugin()],
 	server: {
 		port: 3000,
 	},

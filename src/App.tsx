@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "preact/hooks";
 import SoftKeys, { setSoftkeys } from "./views/SoftKeys";
-import ViewHandler, { back, forward, useInView } from "./views/ViewHandler";
+import ViewHandler, { back, forward, useInView, useInViewEffect } from "./views/ViewHandler";
 import { register } from "./lib/keys";
 import Home from "./views/Home";
 
@@ -16,20 +16,16 @@ function getRandomColor() {
 }
 
 function TestView() {
-	const inView = useInView();
-
 	const id = useMemo(() => getRandomColor(), []);
 
-	useEffect(() => {
-		console.log("inView", inView);
-		if (inView) {
-			const registeredKey = register("Enter", () => {
-				forward(<TestView />);
-			});
+	useInViewEffect(() => {
+		const registeredKey = register(["Enter", "Backspace"], (e) => {
+			if (e.key === "Backspace") return back();
+			forward(<TestView />);
+		});
 
-			return () => registeredKey.unregister();
-		}
-	}, [inView]);
+		return () => registeredKey.unregister();
+	});
 
 	return (
 		<main style={{ height: "100vh", padding: 5, backgroundColor: id }}>
@@ -38,6 +34,8 @@ function TestView() {
 		</main>
 	);
 }
+
+// forward(<TestView />);
 
 forward(<Home />, {
 	noAnimation: true,

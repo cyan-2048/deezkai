@@ -4,26 +4,41 @@
 	position: fixed;
 	top: 0;
 	left: 0;
-	animation-fill-mode: forwards;
-	animation-duration: 0.5s;
-	animation-timing-function: cubic-bezier(0.46, 0.03, 0.52, 0.96);
+	&,
+	:global(.view_animation) {
+		animation-fill-mode: forwards;
+		animation-duration: 0.5s;
+		animation-timing-function: cubic-bezier(0.46, 0.03, 0.52, 0.96);
+	}
 	overflow: hidden;
 }
 
 .toLeft {
-	animation-name: moveToLeft;
+	&,
+	:global(.view_animation) {
+		animation-name: moveToLeft;
+	}
 }
 
 .toRight {
-	animation-name: moveToRight;
+	&,
+	:global(.view_animation) {
+		animation-name: moveToRight;
+	}
 }
 
 .fromLeft {
-	animation-name: moveFromLeft;
+	&,
+	:global(.view_animation) {
+		animation-name: moveFromLeft;
+	}
 }
 
 .fromRight {
-	animation-name: moveFromRight;
+	&,
+	:global(.view_animation) {
+		animation-name: moveFromRight;
+	}
 }
 
 @keyframes moveToLeft {

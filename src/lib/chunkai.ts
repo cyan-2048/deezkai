@@ -131,12 +131,7 @@ class HttpClient {
 				}
 			}
 		});
-		// this.xhr.addEventListener('load', () =>
-		// 	this.onComplete?.({
-		// 		currentBytes: chunk.endBytes,
-		// 		totalBytes: chunk.totalBytes
-		// 	})
-		// );
+		this.xhr.addEventListener("load", () => console.log("load", this.xhr.response));
 		this.xhr.addEventListener("abort", () => console.log(`Download aborted`));
 		this.xhr.addEventListener("error", () => this.onError?.(new Error("File download failed")));
 		this.xhr.open("GET", url, true);

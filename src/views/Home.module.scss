@@ -1,3 +1,9 @@
+@use "./shared.scss";
+
+%border-color {
+	border-bottom: 1px rgba(114, 114, 114, 0.6) solid;
+}
+
 .header {
 	// temp
 	background: linear-gradient(to top, transparent 5%, rgba(88, 88, 88, 0.7) 100%);
@@ -12,15 +18,17 @@
 .body {
 	height: 265px;
 	width: 100vw;
-	background: linear-gradient(to top, transparent 15%, hsl(216, 10.2%, 9.6%) 100%);
-	background-color: hsl(220, 7.6%, 23.3%);
 	position: relative;
+	@extend %body-bg;
+	@extend %border-color;
 }
 
 .item {
 	height: 66px;
-	border-bottom: 1px rgba(114, 114, 114, 0.6) solid;
 	padding-left: 66px;
+	&:not(:last-child) {
+		@extend %border-color;
+	}
 	position: relative;
 	z-index: 9;
 

@@ -1,5 +1,7 @@
 // this file will handle how the keyboard is being used
 
+import { Signal, signal } from "@preact/signals";
+
 interface RegisterOptions {
 	/**
 	 * remove after triggered
@@ -49,8 +51,11 @@ export function register<T extends string | string[] = any>(key: T, callback: (e
 	return new RegisteredKey(key, callback, options);
 }
 
-export function unregister(...keys: RegisteredKey[]) {
-	keys.forEach((e) => e.unregister());
+export function unregister(...keys: (RegisteredKey | (() => void))[]) {
+	keys.forEach((e) => {
+		if (typeof e === "function") return e();
+		e.unregister();
+	});
 }
 
 window.addEventListener(
@@ -74,3 +79,59 @@ window.addEventListener(
 	},
 	true
 );
+
+export class Navigation {
+	index = signal(0);
+
+	constructor(private arr: Signal<any[]> | number) {}
+
+	getIndex() {
+		return this.index.peek();
+	}
+
+	getLength() {
+		if (typeof this.arr === "number") return this.arr;
+		return this.arr.peek().length;
+	}
+
+	register() {
+		const keys: Parameters<typeof unregister> = [
+			register("ArrowUp", (e) => {
+				if (!this.getLength()) return;
+				if (!this.getIndex()) return e.repeat ? null : (this.index.value = this.getLength() - 1);
+				this.index.value--;
+			}),
+			register("ArrowDown", (e) => {
+				if (!this.getLength()) return;
+				if (this.getIndex() === this.getLength() - 1) return e.repeat ? null : (this.index.value = 0);
+				this.index.value++;
+			}),
+		];
+
+		if (typeof this.arr !== "number") {
+			keys.push(
+				this.arr.subscribe((arr) => {
+					if (this.getLength() === 0) {
+						this.index.value = 0;
+						return;
+					}
+
+					if (this.getIndex() === arr.length) {
+						this.index.value = arr.length - 1;
+					}
+				})
+			);
+		}
+
+		return () => unregister(...keys);
+	}
+}
+
+// @ts-ignore
+import scrollIntoView from "scroll-into-view";
+
+export function centerScroll(el: HTMLElement, sync = false, time = 100) {
+	return new Promise((res) => {
+		scrollIntoView(el, { time: sync ? 0 : time, align: { left: 0 }, ease: (e: number) => e }, (type: string) => res(type === "complete"));
+	});
+}

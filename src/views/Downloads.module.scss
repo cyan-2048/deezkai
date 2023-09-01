@@ -1,0 +1,97 @@
+@use "./shared.scss";
+
+.body {
+	height: 265px;
+	width: 100vw;
+	position: relative;
+	@extend %body-bg;
+	border-bottom: 1px rgba(114, 114, 114, 0.6) solid;
+	overflow: auto;
+}
+
+.focus_item {
+	height: 50px;
+	width: 100vw;
+	position: fixed;
+	top: 0;
+	left: 0;
+	background: orange;
+	opacity: 0.65;
+	transition: top linear 0.2s;
+	box-shadow: inset 0 0 8px 4px rgba(0, 0, 0, 0.4);
+}
+
+.download_item {
+	height: 50px;
+	width: 100vw;
+	overflow: hidden;
+	padding: 5px;
+	display: flex;
+	position: relative;
+	z-index: 9;
+
+	.item_icon {
+		width: 40px;
+		position: relative;
+		background: rgb(65, 64, 64);
+		border-radius: 3px;
+		overflow: hidden;
+		flex-shrink: 0;
+
+		img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		svg {
+			fill: rgb(219, 219, 219);
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 24px;
+			height: 24px;
+		}
+	}
+
+	.item_wrap {
+		padding-left: 5px;
+		flex: 1;
+
+		div {
+			width: 185px;
+			font-size: 12px;
+			font-weight: 400;
+			line-height: 1.2;
+			white-space: nowrap;
+		}
+
+		.item_title {
+			&,
+			* {
+				font-size: 14px;
+				font-weight: bold;
+			}
+		}
+
+		.progress {
+			background: white;
+			height: 5px;
+			width: 100%;
+			position: relative;
+			border-radius: 10px;
+			overflow: hidden;
+			margin-top: 2px;
+
+			.bar {
+				position: absolute;
+				top: 0;
+				left: 0;
+				height: 100%;
+				width: 0%;
+				background: orange;
+			}
+		}
+	}
+}
