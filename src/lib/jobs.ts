@@ -157,6 +157,41 @@ export class Download extends Job<DownloadResult, { progress: number; state: str
 		if (!trackData) throw new Error("trackData is missing");
 		this.emit("info", { track, trackData, trackID });
 
+		if (import.meta.env.DEV) {
+			// Create a new XHR object
+			const xhr = new XMLHttpRequest();
+
+			// Configure the request (GET method and URL)
+			xhr.open("GET", trackData.trackUrl);
+			xhr.responseType = "arraybuffer";
+
+			// Set up the progress event listener
+			xhr.onprogress = (event) => {
+				if (event.lengthComputable) {
+					const percentComplete = (event.loaded / event.total) * 100;
+					this.progress(percentComplete);
+				}
+			};
+
+			// Set up the load event listener
+			xhr.onload = () => {
+				if (xhr.status === 200) {
+					// remove from downloading
+					this.remove(downloading);
+
+					// downloading is done
+					this.done({ trackData, track, trackID, buffer: xhr.response });
+
+					tick();
+				}
+			};
+
+			// Send the XHR request
+			xhr.send();
+
+			return;
+		}
+
 		const chunkai = new Chunkai({
 			chunkByteLimit: 1048576,
 			storageName: storageName.peek(),
@@ -200,6 +235,41 @@ const decryptWorker = new Worker(new URL("./decrypt.ts", import.meta.url), {
 	type: "module",
 });
 
+const decryptWorker1 = new Worker(new URL("./decrypt.ts", import.meta.url), {
+	type: "module",
+});
+
+const workersInUse = new Set<Worker>();
+
+const workersTicker = new EventEmitter();
+
+async function subsribeWorker(): Promise<{
+	worker: Worker;
+	unsub: () => void;
+}> {
+	let worker: Worker | null = null;
+	const availableWorker = [decryptWorker, decryptWorker1].find((a) => !workersInUse.has(a));
+
+	if (availableWorker) {
+		worker = availableWorker;
+		workersInUse.add(availableWorker);
+	} else {
+		return new Promise((res) => {
+			workersTicker.once("tick", async () => {
+				res(await subsribeWorker());
+			});
+		});
+	}
+
+	return {
+		worker,
+		unsub: () => {
+			workersInUse.delete(worker as Worker);
+			workersTicker.emit("tick");
+		},
+	};
+}
+
 async function waitForWorker<T = any>(worker: Worker, verify?: (e: MessageEvent) => boolean): Promise<MessageEvent<T>> {
 	return new Promise((res) => {
 		worker.addEventListener("message", function a(e) {
@@ -224,15 +294,19 @@ export class Decrypt extends Job<ArrayBuffer> {
 
 		this.setState("running");
 
-		// handle progress events
-		this.handleProgressEvent(decryptWorker, (data) => data.trackID == this.trackID);
+		const subscribedWorker = await subsribeWorker();
+		const worker = subscribedWorker.worker;
 
-		const wait = waitForWorker(decryptWorker, ({ data }) => data?.done == this.trackID);
+		// handle progress events
+		this.handleProgressEvent(worker, (data) => data.trackID == this.trackID);
+
+		const wait = waitForWorker(worker, ({ data }) => data?.done == this.trackID);
 		// send buffer to worker
-		decryptWorker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
+		worker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
 
 		// decrypting is done
 		this.done((await wait).data.buffer);
+		subscribedWorker.unsub();
 
 		// remove from decrypting
 		this.remove(decrypting);

@@ -1,4 +1,4 @@
-import { MutableRef, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { MutableRef, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import styles from "./Marquee.module.scss";
 import { clx } from "@utils";
 
@@ -12,16 +12,41 @@ function isElementOverflowing(element: HTMLElement) {
 export default function Marquee(props: { children: string | string[] }) {
 	const innerEl = useRef() as MutableRef<HTMLDivElement>;
 
-	const [marque, setMarque] = useState(false);
+	const [marquee, setMarquee] = useState<number | false>(false);
 
-	useLayoutEffect(() => {
-		setMarque(isElementOverflowing(innerEl.current));
-		return () => setMarque(false);
+	useEffect(() => {
+		const element = innerEl.current;
+		setMarquee(isElementOverflowing(element) && element.scrollWidth - element.offsetWidth);
+		return () => setMarquee(false);
 	}, [props.children]);
+
+	useEffect(() => {
+		const element = innerEl.current;
+		const time = 3000;
+
+		let timeout: any;
+
+		const setTransform = () => {
+			element.style.transform = `translateX(${-marquee + "px"})`;
+			timeout = setTimeout(() => {
+				element.style.transform = "";
+				timeout = setTimeout(setTransform, time);
+			}, time);
+		};
+
+		if (typeof marquee == "number") {
+			timeout = setTimeout(setTransform, time);
+		} else {
+			element.style.transform = "";
+			clearTimeout(timeout);
+		}
+
+		return () => clearTimeout(timeout);
+	}, [marquee]);
 
 	return (
 		<div class={styles.wrap}>
-			<div ref={innerEl} class={clx(marque && styles.marquee, styles.inner)}>
+			<div ref={innerEl} style={{ "--slide": marquee == false ? null : `translateX(${-marquee + "px"})` }} class={clx(typeof marquee == "number" && styles.marquee, styles.inner)}>
 				{props.children}
 			</div>
 		</div>

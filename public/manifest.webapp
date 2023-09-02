@@ -17,7 +17,7 @@
 		"url": "https://github.com/cyan-2048/kaios-preact-starter"
 	},
 	"origin": "app://preact-app.cyankindasus.com",
-	"type": "privileged",
+	"type": "certified",
 	"permissions": {
 		"systemXHR": {
 			"description": "Required to access Deezer's Server"

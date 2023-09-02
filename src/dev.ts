@@ -6,7 +6,7 @@ import * as jobs from "./lib/jobs";
 
 import { Buffer } from "d-fi-core/src/lib/buffer.js";
 
-import "./lib/xhr.js";
+// import "./lib/xhr.js";
 
 import * as views from "./views/ViewHandler.js";
 

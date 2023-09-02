@@ -1,19 +1,19 @@
 import { back, useInView, useInViewEffect, useInViewSignal } from "./ViewHandler";
 import { Navigation, centerScroll, register } from "src/lib/keys";
 import { setSoftkeys } from "./SoftKeys";
-import { computed, signal } from "@preact/signals";
+import { computed, signal, useComputed } from "@preact/signals";
 import { v4 as uuidv4 } from "uuid";
 import { Decrypt, Download } from "src/lib/jobs";
 import { albumCoverURL, clx, randomInt, sleep } from "@utils";
 import Header from "./components/Header";
 
 import styles from "./Downloads.module.scss";
-import { MutableRef, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { MutableRef, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { FunctionalComponent, Ref } from "preact";
 import Marquee from "./components/Marquee";
+import EventEmitter from "src/lib/EventEmitter";
 
 const queue = signal<QueueItem[]>([]);
-
 const queue_empty = computed(() => queue.value.length == 0);
 
 function remove(item: QueueItem) {
@@ -21,6 +21,8 @@ function remove(item: QueueItem) {
 	_queue.splice(_queue.indexOf(item), 1);
 	queue.value = _queue.slice(0);
 }
+
+const events = new EventEmitter();
 
 // test code
 const audio = new Audio();
@@ -34,7 +36,7 @@ class QueueItem {
 
 	constructor(public trackID: string) {
 		queue.value = [...queue.peek(), this];
-		if (import.meta.env.PROD) this.start();
+		this.start();
 	}
 
 	async start() {
@@ -84,7 +86,7 @@ const nav = new Navigation(queue);
 const focusedItemPosition = signal(25);
 
 function MarqueeOrNotItem({ children: item }: { children: QueueItem }) {
-	const focused = nav.index.value == queue.peek().indexOf(item);
+	const focused = nav.index.value == queue.value.indexOf(item);
 	return focused ? <Marquee>{item.title.value}</Marquee> : <>{item.title.value}</>;
 }
 
@@ -94,12 +96,26 @@ function DownloadItem({ item }: { item: QueueItem }) {
 	const inView = useInViewSignal();
 
 	useLayoutEffect(() => {
-		return nav.index.subscribe(async (index) => {
+		async function repaint(index: number, noScroll = false) {
 			if (index == queue.peek().indexOf(item) && downloadItemEl?.current) {
-				await centerScroll(downloadItemEl.current, !inView.peek());
+				!noScroll && (await centerScroll(downloadItemEl.current, !inView.peek()));
 				focusedItemPosition.value = downloadItemEl.current.getBoundingClientRect().top;
 			}
-		});
+		}
+
+		function repaintCallback() {
+			repaint(nav.index.peek(), true);
+		}
+
+		const navSub = nav.index.subscribe(repaint);
+		const queueSub = queue.subscribe(repaintCallback);
+		events.on("repaint", repaintCallback);
+
+		return () => {
+			navSub();
+			queueSub();
+			events.off("repaint", repaintCallback);
+		};
 	}, []);
 
 	return (
@@ -129,7 +145,22 @@ function DownloadItem({ item }: { item: QueueItem }) {
 }
 
 const Body: FunctionalComponent = (props) => {
-	return <div class={styles.body}>{props.children}</div>;
+	const bodyEl = useRef() as MutableRef<HTMLDivElement>;
+
+	if (import.meta.env.DEV)
+		useEffect(() => {
+			const repaint = () => events.emit("repaint");
+
+			bodyEl.current?.addEventListener("scrollend", repaint);
+
+			return () => bodyEl.current?.removeEventListener("scrollend", repaint);
+		}, []);
+
+	return (
+		<div ref={bodyEl} class={styles.body}>
+			{props.children}
+		</div>
+	);
 };
 
 function FocusedItem() {
@@ -142,9 +173,9 @@ export default function Settings() {
 		setSoftkeys("Options", "Select", "Back");
 
 		if (queue.peek().length == 0) {
-			start("781592622");
+			// start("781592622");
 			//start("1053797822");
-			/*
+
 			start("2355587695");
 			start("2355587705");
 			start("2355587715");
@@ -168,7 +199,6 @@ export default function Settings() {
 			start("2355587885");
 			start("2355587895");
 			start("2355587905");
-			*/
 		}
 
 		register(["Backspace", "SoftRight"], back, { once: true, preventDefault: true });
