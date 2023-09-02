@@ -316,8 +316,8 @@ export class Decrypt extends Job<ArrayBuffer> {
 }
 
 ticker.on("tick", () => {
-	// if there's no longer any decrypting objects & if there's no longer any downloads happening
-	if (!decrypting.length) {
+	// if there's less than 2 happening then start
+	if (decrypting.length < 2) {
 		// decrypt one at a time
 		pendingDecrypt[0]?.start();
 	}
