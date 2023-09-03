@@ -1,5 +1,3 @@
-import { createContext } from "preact";
-
 type coverSize = 56 | 250 | 500 | 1000 | 1500 | 1800 | number;
 
 const albumCoverCache = new Map<string, ArrayBuffer>();
