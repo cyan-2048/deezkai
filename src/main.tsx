@@ -24,5 +24,57 @@ render(<App />, document.getElementById("app") as HTMLElement);
 		import("preact/debug");
 		import("./dev");
 	} else {
+		function async<A>(generator: GeneratorFunction, __arguments = [], __this: A) {
+			let _generator: Generator;
+			return new Promise((resolve, reject) => {
+				var step = (x: IteratorResult<any, any>) =>
+					x.done
+						? resolve(x.value)
+						: Promise.resolve(x.value).then(
+								(value) => {
+									try {
+										step(_generator.next(value));
+									} catch (e) {
+										reject(e);
+									}
+								},
+								(value) => {
+									try {
+										step(_generator.throw(value));
+									} catch (e) {
+										reject(e);
+									}
+								}
+						  );
+				step((_generator = generator.apply(__this, __arguments)).next());
+			});
+		}
+
+		Object.assign(window, { async });
+
+		/*
+		// TEST for getRoot()
+		const e: DeviceStorage = navigator.getDeviceStorage("sdcard");
+
+		const root: Directory = await e.getRoot();
+
+		async function recursive(entries: Array<Directory | File>, directory: Directory) {
+			console.log("Folder:", directory.path);
+			let directories: Directory[] = [];
+			for (let entry of entries) {
+				if (entry instanceof File) {
+					console.log("File:", directory.path + "/" + entry.name);
+				} else {
+					directories.push(entry);
+				}
+			}
+
+			for (const directory of directories) {
+				await recursive(await directory.getFilesAndDirectories(), directory);
+			}
+		}
+
+		recursive(await root.getFilesAndDirectories(), root);
+		*/
 	}
 })();

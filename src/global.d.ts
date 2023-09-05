@@ -65,6 +65,8 @@ declare global {
 
 	interface Window {
 		MozActivity: MozActivity;
+		Directory: typeof Directory;
+		VolumeManager: VolumeManager;
 	}
 
 	interface VolumeManager {
@@ -73,7 +75,7 @@ declare global {
 		requestDown: () => void;
 	}
 
-	interface DOMRequest<T> {
+	interface DOMRequest<T> extends EventTarget {
 		error?: Error;
 		result: T;
 		onsuccess(): void;
@@ -81,9 +83,8 @@ declare global {
 		then: Promise<T>["then"];
 	}
 
-	class MozActivity {
+	class MozActivity extends DOMRequest<any> {
 		constructor(options: MozActivityOptions): MozActivity;
-		onerror?: (error: any) => void;
 	}
 
 	interface MozActivityOptions {
@@ -103,26 +104,82 @@ declare global {
 
 		launch(): void;
 
+		/**
+		 * @deprecated UNKNOWN METHOD
+		 */
 		addReceipt(): unknown;
+		/**
+		 * @deprecated UNKNOWN METHOD
+		 */
 		checkForUpdate(): unknown;
+		/**
+		 * @deprecated UNKNOWN METHOD
+		 */
 		removeReceipt(): unknown;
+		/**
+		 * @deprecated UNKNOWN METHOD
+		 */
 		replaceReceipt(): unknown;
 	}
 
 	class Directory {
+		/**
+		 * name of the current folder
+		 */
 		name: string;
+
+		/**
+		 * the filepath of the folder relative to the root
+		 */
 		path: string;
 
-		createFile(): unknown;
-		createDirectory(): unknown;
-		get(): unknown;
-		remove(): unknown;
-		removeDeep(): unknown;
+		/**
+		 * creates a file to a filepath (creates folders if necessary), the created file will be an empty Blob
+		 * @param filepath relative file path
+		 */
+		createFile(filepath: string): Promise<boolean>;
+		/**
+		 * creates a folder to a filepath (creates folders if necessary)
+		 * @param filepath relative file path
+		 */
+		createDirectory(filepath: string): Promise<boolean>;
+
+		/**
+		 * get the file, creates a folder if it doesn't exist
+		 * @param filepath relative file path
+		 */
+		get(filepath: string): Promise<File>;
+
+		/**
+		 * removes a file/folder, throws Exeception if the folder has content
+		 * @param filepath relative file path
+		 * @returns true if the file/folder was removed, false if it didn't exist
+		 */
+		remove(filepath: string): Promise<boolean>;
+		/**
+		 * removes a file/folder, throws Exeception if the folder has content
+		 * @param filepath relative file path
+		 * @returns true if the file/folder was removed, false if it didn't exist
+		 */
+		removeDeep(filepath: string): Promise<boolean>;
+
+		/**
+		 * Renames a file or folder, relative file path
+		 * @param filepath relative file path
+		 * @param newName new name of the file or folder
+		 */
+		renameTo(filepath: string, newName: string): Promise<boolean>;
+		getFilesAndDirectories(): Promise<Array<File | Directory>>;
+		getFiles(): Promise<File[]>;
+
+		/**
+		 * @deprecated UNKNOWN METHOD
+		 */
 		copyTo(): unknown;
+		/**
+		 * @deprecated UNKNOWN METHOD
+		 */
 		moveTo(): unknown;
-		renameTo(): unknown;
-		getFilesAndDirectories(): Promise<File | Directory>;
-		getFiles(): Promise<File>;
 	}
 
 	interface DeviceStorage {
@@ -136,7 +193,7 @@ declare global {
 	}
 
 	class XMLHttpRequest {
-		constructor(options: undefined | { mozSystem?: boolean }): XMLHttpRequest;
+		constructor(options?: { mozSystem?: boolean; mozAnon?: boolean }): XMLHttpRequest;
 	}
 }
 
