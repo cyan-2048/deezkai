@@ -55,18 +55,44 @@ interface Manifest extends ManifestOptional {
 	categories: ("social" | "games" | "utilities" | "life style" | "entertainment" | "health" | "sports" | "book/reference")[];
 }
 
+interface MozActivityOptions {
+	name: string;
+	data?: any;
+}
+
+interface MozActivityRequestHandler {
+	readonly source: MozActivityOptions;
+	postResult(data: any): void;
+	postError(error: Error | string): void;
+}
+
+type respectTimezoneOptions = "ignoreTimezone" | "honorTimezone";
+
+interface mozAlarm {
+	id: number;
+	date: Date;
+	respectTimezone: respectTimezoneOptions;
+	data?: any;
+}
+
+interface MozAlarmsManager {
+	add(date: Date, respectTimezone: respectTimezoneOptions, data?: any): DOMRequest<mozAlarm>;
+	remove(id: number): void;
+	getAll(): DOMRequest<mozAlarm[]>;
+}
+
+function mozSetMessageHandler(type: "activity", handler: (request: MozActivityRequestHandler) => void): void;
+function mozSetMessageHandler(type: "alarm", handler: (request: mozAlarm) => void): void;
+function mozSetMessageHandler(type: string, handler: (request: unknown) => void): void;
+
 declare global {
 	interface Navigator {
 		volumeManager: VolumeManager;
 		getDeviceStorage: (deviceStorage: ValidDeviceStorages) => DeviceStorage;
 		getDeviceStorageByNameAndType: (name: string, type: ValidDeviceStorages) => DeviceStorage;
 		mozApps: DOMApplicationsRegistry;
-	}
-
-	interface Window {
-		MozActivity: MozActivity;
-		Directory: typeof Directory;
-		VolumeManager: VolumeManager;
+		mozAlarms: MozAlarmsManager;
+		mozSetMessageHandler: typeof mozSetMessageHandler;
 	}
 
 	interface VolumeManager {
@@ -81,15 +107,15 @@ declare global {
 		onsuccess(): void;
 		onerror(): void;
 		then: Promise<T>["then"];
+		readyState: "done" | "pending";
 	}
 
-	class MozActivity extends DOMRequest<any> {
+	interface HTMLMediaElement {
+		mozAudioChannelType: "normal" | "content";
+	}
+
+	class MozActivity<T = any> extends DOMRequest<T> {
 		constructor(options: MozActivityOptions): MozActivity;
-	}
-
-	interface MozActivityOptions {
-		name: string;
-		data?: any;
 	}
 
 	type ValidDeviceStorages = "apps" | "music" | "pictures" | "videos" | "sdcard";
