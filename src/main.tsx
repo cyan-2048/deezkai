@@ -76,5 +76,9 @@ render(<App />, document.getElementById("app") as HTMLElement);
 
 		recursive(await root.getFilesAndDirectories(), root);
 		*/
+
+		navigator.mozAlarms.getAll().then((alarms) => {
+			console.log(alarms);
+		});
 	}
 })();
