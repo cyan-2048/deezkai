@@ -43,6 +43,11 @@ type ManifestOptional = Partial<{
 	csp: string;
 }>;
 
+interface MoveOrCopyOptions {
+	keepBoth: boolean;
+	targetStorage: DeviceStorage;
+}
+
 interface Manifest extends ManifestOptional {
 	name: string;
 	version: string;
@@ -88,24 +93,36 @@ function mozSetMessageHandler(type: string, handler: (request: unknown) => void)
 declare global {
 	interface Navigator {
 		volumeManager: VolumeManager;
-		getDeviceStorage: (deviceStorage: ValidDeviceStorages) => DeviceStorage;
-		getDeviceStorageByNameAndType: (name: string, type: ValidDeviceStorages) => DeviceStorage;
+		getDeviceStorage(deviceStorage: ValidDeviceStorages): DeviceStorage;
+
+		/**
+		 * the function is basically just:
+		 * ```JS
+		 * function (name, type) {
+		 * 	const storages = navigator.getDeviceStorages(type);
+		 * 	return storages.find(storage => name === storage.storageName) || null;
+		 * }
+		 * ```
+		 * @param name `DeviceStorage.storageName`
+		 * @param type `navigator.getDeviceStorages(type)`
+		 */
+		getDeviceStorageByNameAndType(name: string, type: ValidDeviceStorages): DeviceStorage | null;
 		mozApps: DOMApplicationsRegistry;
 		mozAlarms: MozAlarmsManager;
 		mozSetMessageHandler: typeof mozSetMessageHandler;
 	}
 
 	interface VolumeManager {
-		requestShow: () => void;
-		requestUp: () => void;
-		requestDown: () => void;
+		requestShow(): void;
+		requestUp(): void;
+		requestDown(): void;
 	}
 
 	interface DOMRequest<T> extends EventTarget {
 		error?: Error;
 		result: T;
-		onsuccess(): void;
-		onerror(): void;
+		onsuccess: () => void;
+		onerror: () => void;
 		then: Promise<T>["then"];
 		readyState: "done" | "pending";
 	}
@@ -183,7 +200,7 @@ declare global {
 		 */
 		remove(filepath: string): Promise<boolean>;
 		/**
-		 * removes a file/folder, throws Exeception if the folder has content
+		 * removes a file/folder
 		 * @param filepath relative file path
 		 * @returns true if the file/folder was removed, false if it didn't exist
 		 */
@@ -199,23 +216,31 @@ declare global {
 		getFiles(): Promise<File[]>;
 
 		/**
-		 * @deprecated UNKNOWN METHOD
+		 * copies a file to a destination
+		 * warning: did not test method for edge cases (e.g. copy to same folder, wrong directory)
+		 * @param filepath relative file path
+		 * @param relativeDirectoryPath relative folder path in relation to the root of the provided targetStorage
+		 * @param options required options
 		 */
-		copyTo(): unknown;
+		copyTo(filepath: string, relativeDirectoryPath: string, options: MoveOrCopyOptions): Promise<boolean>;
 		/**
-		 * @deprecated UNKNOWN METHOD
+		 * moves a file to a destination
+		 * warning: did not test method for edge cases (e.g. move to same folder or wrong directory)
+		 * @param filepath relative file path
+		 * @param relativeDirectoryPath relative folder path in relation to the root of the provided targetStorage
+		 * @param options required options
 		 */
-		moveTo(): unknown;
+		moveTo(filepath: string, relativeDirectoryPath: string, options: MoveOrCopyOptions): Promise<boolean>;
 	}
 
 	interface DeviceStorage {
 		storageName: string;
-		get: (filePath: string) => DOMRequest<File>;
-		addNamed: (file: File | Blob, filePath: string) => DOMRequest<File>;
-		appendNamed: (file: File | Blob, filePath: string) => DOMRequest<File>;
-		delete: (filePath: string) => DOMRequest<void>;
+		get(filePath: string): DOMRequest<File>;
+		addNamed(file: File | Blob, filePath: string): DOMRequest<File>;
+		appendNamed(file: File | Blob, filePath: string): DOMRequest<File>;
+		delete(filePath: string): DOMRequest<void>;
 		enumerate: any;
-		getRoot: () => Promise<Directory>;
+		getRoot(): Promise<Directory>;
 	}
 
 	class XMLHttpRequest {
