@@ -20,7 +20,7 @@
 		white-space: nowrap;
 
 		&.marquee {
-			transition: transform 0.8s linear;
+			transition: transform var(--time) linear;
 		}
 	}
 }

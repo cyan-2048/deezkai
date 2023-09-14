@@ -1,15 +1,15 @@
-import { back, useInView, useInViewEffect, useInViewSignal } from "./ViewHandler";
+import { back, useInViewEffect, useInViewSignal } from "./ViewHandler";
 import { Navigation, centerScroll, register } from "src/lib/keys";
 import { setSoftkeys } from "./SoftKeys";
-import { computed, signal, useComputed } from "@preact/signals";
+import { computed, signal } from "@preact/signals";
 import { v4 as uuidv4 } from "uuid";
 import { Decrypt, Download } from "src/lib/jobs";
-import { albumCoverURL, clx, randomInt, sleep } from "@utils";
+import { albumCoverURL, clx, sleep } from "@utils";
 import Header from "./components/Header";
 
 import styles from "./Downloads.module.scss";
-import { MutableRef, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { FunctionalComponent, Ref } from "preact";
+import { MutableRef, useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { FunctionalComponent } from "preact";
 import Marquee from "./components/Marquee";
 import EventEmitter from "src/lib/EventEmitter";
 
@@ -108,12 +108,10 @@ function DownloadItem({ item }: { item: QueueItem }) {
 		}
 
 		const navSub = nav.index.subscribe(repaint);
-		const queueSub = queue.subscribe(repaintCallback);
 		events.on("repaint", repaintCallback);
 
 		return () => {
 			navSub();
-			queueSub();
 			events.off("repaint", repaintCallback);
 		};
 	}, []);

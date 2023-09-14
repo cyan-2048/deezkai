@@ -119,12 +119,22 @@ declare global {
 	}
 
 	interface DOMRequest<T> extends EventTarget {
-		error?: Error;
-		result: T;
+		readonly error?: Error;
+		readonly result: T;
 		onsuccess: () => void;
 		onerror: () => void;
-		then: Promise<T>["then"];
-		readyState: "done" | "pending";
+		readonly then: Promise<T>["then"];
+		readonly readyState: "done" | "pending";
+	}
+
+	interface DOMCursor<T> extends EventTarget {
+		readonly error?: Error;
+		readonly result: T;
+		onsuccess: () => void;
+		onerror: () => void;
+		readonly done: boolean;
+		readonly readyState: "done" | "pending";
+		readonly continue(): void;
 	}
 
 	interface HTMLMediaElement {
@@ -239,8 +249,10 @@ declare global {
 		addNamed(file: File | Blob, filePath: string): DOMRequest<File>;
 		appendNamed(file: File | Blob, filePath: string): DOMRequest<File>;
 		delete(filePath: string): DOMRequest<void>;
-		enumerate: any;
+		enumerate(path?: string, options?: { since: Date }): DOMCursor<File>;
 		getRoot(): Promise<Directory>;
+		freeSpace(): DOMRequest<number>;
+		usedSpace(): DOMRequest<number>;
 	}
 
 	class XMLHttpRequest {

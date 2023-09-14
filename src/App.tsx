@@ -3,6 +3,7 @@ import SoftKeys, { setSoftkeys } from "./views/SoftKeys";
 import ViewHandler, { back, forward, useInView, useInViewEffect } from "./views/ViewHandler";
 import { register } from "./lib/keys";
 import Home from "./views/Home";
+import Player from "./views/Player";
 
 function getRandomColor() {
 	const letters = "0123456789ABCDEF";
@@ -40,6 +41,14 @@ function TestView() {
 forward(<Home />, {
 	noAnimation: true,
 	softkeys: ["Options", "Open", "Exit"],
+});
+
+Object.assign(window, {
+	openPlayer() {
+		forward(<Player />, {
+			softkeys: ["Options", "", "Back"],
+		});
+	},
 });
 
 export function App() {

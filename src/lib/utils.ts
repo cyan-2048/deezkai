@@ -68,3 +68,5 @@ export function clx(): string {
 		return Array.from(arguments).filter(Boolean).join(" ");
 	}
 }
+
+export const frozenPromise: Promise<never> = new Promise(() => {});

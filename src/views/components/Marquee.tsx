@@ -22,12 +22,16 @@ export default function Marquee(props: { children: string | string[] }) {
 
 	useEffect(() => {
 		const element = innerEl.current;
-		const time = 3000;
 
 		let timeout: any;
 
+		const string = typeof props.children == "string" ? props.children : props.children.join(" ");
+		const preciseTime = string.length / 15;
+		const time = Math.ceil(preciseTime) * 1000 + 2000;
+
 		const setTransform = () => {
 			element.style.transform = `translateX(${-marquee + "px"})`;
+			element.style.setProperty("--time", preciseTime.toFixed(2) + "s");
 			timeout = setTimeout(() => {
 				element.style.transform = "";
 				timeout = setTimeout(setTransform, time);
@@ -35,18 +39,15 @@ export default function Marquee(props: { children: string | string[] }) {
 		};
 
 		if (typeof marquee == "number") {
-			timeout = setTimeout(setTransform, time);
-		} else {
-			element.style.transform = "";
-			clearTimeout(timeout);
+			timeout = setTimeout(setTransform, 2000);
 		}
 
 		return () => clearTimeout(timeout);
-	}, [marquee]);
+	}, [marquee, props.children]);
 
 	return (
 		<div class={styles.wrap}>
-			<div ref={innerEl} style={{ "--slide": marquee == false ? null : `translateX(${-marquee + "px"})` }} class={clx(typeof marquee == "number" && styles.marquee, styles.inner)}>
+			<div ref={innerEl} class={clx(typeof marquee == "number" && styles.marquee, styles.inner)}>
 				{props.children}
 			</div>
 		</div>
