@@ -8,7 +8,7 @@ import { albumCoverURL, clx, sleep } from "@utils";
 import Header from "./components/Header";
 
 import styles from "./Downloads.module.scss";
-import { MutableRef, useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { MutableRef, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { FunctionalComponent } from "preact";
 import Marquee from "./components/Marquee";
 import EventEmitter from "src/lib/EventEmitter";
@@ -95,12 +95,34 @@ function DownloadItem({ item }: { item: QueueItem }) {
 
 	const inView = useInViewSignal();
 
+	// const [focused, setFocused] = useState(false);
+
 	useLayoutEffect(() => {
+		let cancelled = false;
+
 		async function repaint(index: number, noScroll = false) {
-			if (index == queue.peek().indexOf(item) && downloadItemEl?.current) {
+			if (cancelled) return;
+			cancelled = true;
+			setTimeout(() => (cancelled = false), 200);
+			const queue_peek = queue.peek();
+			const currentIndex = queue_peek.indexOf(item);
+			if (index == currentIndex && downloadItemEl?.current) {
+				//setFocused(true);
 				!noScroll && (await centerScroll(downloadItemEl.current, !inView.peek()));
-				focusedItemPosition.value = downloadItemEl.current.getBoundingClientRect().top;
-			}
+
+				const currentItemPosition = focusedItemPosition.peek();
+				const newItemPosition = downloadItemEl.current.getBoundingClientRect().top;
+				const distance = Math.abs(currentItemPosition - newItemPosition);
+
+				//console.log(distance);
+
+				if (index > 3 && index < queue_peek.length - 5 && distance < 50) {
+					//	console.log(index, "skip set position", newItemPosition, "distance", distance);
+					return;
+				}
+				// console.log(index, "set position", newItemPosition, "distance", distance);
+				focusedItemPosition.value = newItemPosition;
+			} // else setFocused(false);
 		}
 
 		function repaintCallback() {
@@ -148,10 +170,8 @@ const Body: FunctionalComponent = (props) => {
 	if (import.meta.env.DEV)
 		useEffect(() => {
 			const repaint = () => events.emit("repaint");
-
-			bodyEl.current?.addEventListener("scrollend", repaint);
-
-			return () => bodyEl.current?.removeEventListener("scrollend", repaint);
+			bodyEl.current?.addEventListener("scroll", repaint);
+			return () => bodyEl.current?.removeEventListener("scroll", repaint);
 		}, []);
 
 	return (
