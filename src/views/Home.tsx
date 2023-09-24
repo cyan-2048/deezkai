@@ -32,7 +32,7 @@ export default function Home() {
 			register("Enter", () => {
 				const currentIndex = nav.getIndex();
 				if (currentIndex == 3) {
-					forward(_downloads, { softkeys: ["Options", "Select", "Back"] });
+					forward(_downloads, { softkeys: ["Options", "", "Back"] });
 				}
 			}),
 		];

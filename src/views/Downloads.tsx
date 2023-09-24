@@ -128,7 +128,6 @@ function DownloadItem({ item }: { item: QueueItem }) {
 		let cancelled = false;
 
 		async function repaint(index: number, noScroll = false) {
-			setSoftkeys("Options", nav.getLength() ? "Abort" : "", "Back");
 			if (cancelled) return;
 			cancelled = true;
 			setTimeout(() => (cancelled = false), 200);
@@ -257,11 +256,15 @@ export default function Downloads() {
 			if (e.key == "Enter") currentQueueItem?.abort();
 		});
 
+		const isEmpty = queue_empty.subscribe((empty) => {
+			setSoftkeys("Options", empty ? "" : "Abort", "Back");
+		});
+
 		const unregister_nav = nav.register();
 
 		return () => {
 			unregister_nav();
-			unregister(unregister_Enter, backspace);
+			unregister(unregister_Enter, backspace, isEmpty);
 			console.log("no longer inview Downloads");
 		};
 	});
