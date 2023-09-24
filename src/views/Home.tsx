@@ -3,7 +3,7 @@ import styles from "./Home.module.scss";
 import { useEffect } from "preact/hooks";
 import { Navigation, register, unregister } from "src/lib/keys";
 import { forward, useInView, useInViewEffect } from "./ViewHandler";
-import Settings from "./Downloads";
+import Downloads from "./Downloads";
 import { setSoftkeys } from "./SoftKeys";
 import { JSX } from "preact/jsx-runtime";
 import Header from "./components/Header";
@@ -22,6 +22,8 @@ function HomeListItem(props: { children: JSX.Element; title: string; description
 	);
 }
 
+const _downloads = <Downloads />;
+
 export default function Home() {
 	useInViewEffect(() => {
 		setSoftkeys("Options", "Open", "Exit");
@@ -30,7 +32,7 @@ export default function Home() {
 			register("Enter", () => {
 				const currentIndex = nav.getIndex();
 				if (currentIndex == 3) {
-					forward(<Settings />, { softkeys: ["Options", "Select", "Back"] });
+					forward(_downloads, { softkeys: ["Options", "Select", "Back"] });
 				}
 			}),
 		];

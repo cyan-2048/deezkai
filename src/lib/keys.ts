@@ -75,7 +75,7 @@ window.addEventListener(
 				}
 			}
 		}
-		console.log("registeredKeys", registeredKeys);
+		// console.log("registeredKeys", registeredKeys);
 	},
 	true
 );
@@ -83,15 +83,15 @@ window.addEventListener(
 export class Navigation {
 	index = signal(0);
 
-	constructor(private arr: Signal<any[]> | number) {}
+	constructor(private $$arr: Signal<any[]> | number) {}
 
 	getIndex() {
 		return this.index.peek();
 	}
 
 	getLength() {
-		if (typeof this.arr === "number") return this.arr;
-		return this.arr.peek().length;
+		if (typeof this.$$arr === "number") return this.$$arr;
+		return this.$$arr.peek().length;
 	}
 
 	register() {
@@ -108,9 +108,9 @@ export class Navigation {
 			}),
 		];
 
-		if (typeof this.arr !== "number") {
+		if (typeof this.$$arr !== "number") {
 			keys.push(
-				this.arr.subscribe((arr) => {
+				this.$$arr.subscribe((arr) => {
 					if (this.getLength() === 0) {
 						this.index.value = 0;
 						return;

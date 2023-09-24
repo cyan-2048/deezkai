@@ -1,7 +1,7 @@
 import * as settings from "@settings";
 import * as deezer from "d-fi-core";
 import * as utils from "@utils";
-import * as React from "preact";
+import * as React from "preact/compat";
 import * as jobs from "./lib/jobs";
 
 import { Buffer } from "d-fi-core/src/lib/buffer.js";

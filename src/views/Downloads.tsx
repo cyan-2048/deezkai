@@ -1,14 +1,14 @@
 import { back, useInViewEffect, useInViewSignal } from "./ViewHandler";
-import { Navigation, centerScroll, register } from "src/lib/keys";
+import { Navigation, centerScroll, register, unregister } from "src/lib/keys";
 import { setSoftkeys } from "./SoftKeys";
 import { computed, signal } from "@preact/signals";
 import { v4 as uuidv4 } from "uuid";
-import { Decrypt, Download } from "src/lib/jobs";
+import { Decrypt, Download, Job } from "src/lib/jobs";
 import { albumCoverURL, clx, sleep } from "@utils";
 import Header from "./components/Header";
 
 import styles from "./Downloads.module.scss";
-import { MutableRef, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { MutableRef, useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { FunctionalComponent } from "preact";
 import Marquee from "./components/Marquee";
 import EventEmitter from "src/lib/EventEmitter";
@@ -33,14 +33,24 @@ class QueueItem {
 	id = uuidv4();
 	title = signal("Loading...");
 	imageSrc = signal("");
+	error?: Error;
 
 	constructor(public trackID: string) {
 		queue.value = [...queue.peek(), this];
-		this.start();
+		this.start().catch((error) => {
+			this.error = error;
+			this.state.value = "error";
+			console.error(error);
+		});
 	}
 
+	private $$currentWork: Job | null = null;
+
 	async start() {
+		if (this.$$aborted) return;
+
 		const download = new Download(this.trackID);
+		this.$$currentWork = download;
 		download.on("progress", ({ detail }) => {
 			this.progress.value = detail;
 		});
@@ -52,27 +62,44 @@ class QueueItem {
 		});
 
 		const downloadOutput = await download.promise;
+		let buffer: ArrayBuffer = downloadOutput.buffer;
+
 		if (downloadOutput.trackData.isEncrypted) {
 			this.state.value = "Decrypting";
 			this.progress.value = 0;
 
-			const decrypt = new Decrypt(downloadOutput.buffer, this.trackID);
+			const decrypt = new Decrypt(buffer, this.trackID);
+			this.$$currentWork = decrypt;
 			decrypt.on("progress", ({ detail }) => {
 				this.progress.value = detail;
 			});
 
+			this.$$abort = () => {
+				download.deleteFile();
+			};
+
 			const decryptOutput = await decrypt.promise;
 			await download.deleteFile();
 
-			this.state.value = "Done";
-
-			const blob = new Blob([decryptOutput]);
-			const url = URL.createObjectURL(blob);
-			URL.revokeObjectURL(audio.src);
-			audio.src = url;
-			audio.play();
+			buffer = decryptOutput;
 		}
-		await sleep(1000);
+
+		this.$$currentWork = null;
+		this.state.value = "Done";
+		await sleep(100);
+		remove(this);
+	}
+
+	private $$abort = () => {};
+	private $$aborted = false;
+
+	async abort() {
+		if (this.$$aborted) return;
+		this.$$aborted = true;
+		this.$$abort();
+		this.$$currentWork?.abort();
+		this.state.value = "Aborted";
+		await sleep(100);
 		remove(this);
 	}
 }
@@ -101,6 +128,7 @@ function DownloadItem({ item }: { item: QueueItem }) {
 		let cancelled = false;
 
 		async function repaint(index: number, noScroll = false) {
+			setSoftkeys("Options", nav.getLength() ? "Abort" : "", "Back");
 			if (cancelled) return;
 			cancelled = true;
 			setTimeout(() => (cancelled = false), 200);
@@ -185,10 +213,12 @@ function FocusedItem() {
 	return <div style={{ top: focusedItemPosition.value, opacity: queue_empty.value ? 0 : undefined }} class={clx("view_animation", styles.focus_item)}></div>;
 }
 
-export default function Settings() {
+export default function Downloads() {
 	useInViewEffect(() => {
-		console.log("inview");
-		setSoftkeys("Options", "Select", "Back");
+		console.log("inview Downloads");
+		const c = nav.getLength() ? "Abort" : "";
+		console.log(c);
+		setSoftkeys("Options", c, "Back");
 
 		if (queue.peek().length == 0) {
 			// start("781592622");
@@ -219,13 +249,20 @@ export default function Settings() {
 			start("2355587905");
 		}
 
-		register(["Backspace", "SoftRight"], back, { once: true, preventDefault: true });
+		const backspace = register(["Backspace", "SoftRight"], back, { once: true, preventDefault: true });
+		const unregister_Enter = register(["Enter", "ArrowRight"], (e) => {
+			const currentQueueItem = queue.peek()[nav.index.peek()];
+			console.log("item: ", currentQueueItem);
+
+			if (e.key == "Enter") currentQueueItem?.abort();
+		});
 
 		const unregister_nav = nav.register();
 
 		return () => {
 			unregister_nav();
-			console.log("no longer in view");
+			unregister(unregister_Enter, backspace);
+			console.log("no longer inview Downloads");
 		};
 	});
 

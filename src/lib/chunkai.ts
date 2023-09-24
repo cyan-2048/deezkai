@@ -77,8 +77,8 @@ export type HttpClientOptions = {
 };
 
 class HttpClient {
-	private options: HttpClientOptions;
-	private xhr: XMLHttpRequest;
+	private $$options: HttpClientOptions;
+	private $$xhr: XMLHttpRequest;
 
 	onProgress: (progress: Chunk) => void;
 	onComplete: (progress: Progress) => void;
@@ -88,12 +88,12 @@ class HttpClient {
 		this.onProgress = () => {};
 		this.onComplete = () => {};
 		this.onError = () => {};
-		this.options = Object.assign({ chunkByteLimit: 3145728 }, options);
+		this.$$options = Object.assign({ chunkByteLimit: 3145728 }, options);
 		const xhr = new (XMLHttpRequest as any)({
 			mozSystem: true,
 		});
 		xhr.responseType = "moz-chunked-arraybuffer";
-		this.xhr = xhr;
+		this.$$xhr = xhr;
 	}
 
 	download(url: string): void {
@@ -106,18 +106,18 @@ class HttpClient {
 			data: new ArrayBuffer(0),
 		};
 		let savedBytes = 0;
-		this.xhr.addEventListener("progress", (ev) => {
-			const responseLength = this.xhr.response.byteLength;
+		this.$$xhr.addEventListener("progress", (ev) => {
+			const responseLength = this.$$xhr.response.byteLength;
 			chunk.totalBytes = ev.total;
 			let availableBytes = responseLength;
 			while (availableBytes > 0) {
-				const bytesNeeded = this.options.chunkByteLimit - chunk.data.byteLength;
+				const bytesNeeded = this.$$options.chunkByteLimit - chunk.data.byteLength;
 				const bytesBefore = chunk.data.byteLength;
-				chunk.data = this.appendChunk(chunk.data, this.xhr.response.slice(responseLength - availableBytes, responseLength - availableBytes + bytesNeeded));
+				chunk.data = this.$$appendChunk(chunk.data, this.$$xhr.response.slice(responseLength - availableBytes, responseLength - availableBytes + bytesNeeded));
 				chunk.bytes = chunk.data.byteLength;
 				chunk.endBytes = chunk.startBytes + chunk.data.byteLength;
 				availableBytes = availableBytes - (chunk.data.byteLength - bytesBefore);
-				if (chunk.data.byteLength >= this.options.chunkByteLimit || ev.total === ev.loaded) {
+				if (chunk.data.byteLength >= this.$$options.chunkByteLimit || ev.total === ev.loaded) {
 					savedBytes = savedBytes + chunk.data.byteLength;
 					this.onProgress({ ...chunk });
 					chunk = {
@@ -131,18 +131,18 @@ class HttpClient {
 				}
 			}
 		});
-		this.xhr.addEventListener("load", () => console.log("load", this.xhr.response));
-		this.xhr.addEventListener("abort", () => console.log(`Download aborted`));
-		this.xhr.addEventListener("error", () => this.onError?.(new Error("File download failed")));
-		this.xhr.open("GET", url, true);
-		this.xhr.send();
+		this.$$xhr.addEventListener("load", () => console.log("load", this.$$xhr.response));
+		this.$$xhr.addEventListener("abort", () => console.log(`Download aborted`));
+		this.$$xhr.addEventListener("error", () => this.onError?.(new Error("File download failed")));
+		this.$$xhr.open("GET", url, true);
+		this.$$xhr.send();
 	}
 
 	abort(): void {
-		this.xhr.abort();
+		this.$$xhr.abort();
 	}
 
-	private appendChunk(source: ArrayBuffer, newData: ArrayBuffer) {
+	private $$appendChunk(source: ArrayBuffer, newData: ArrayBuffer) {
 		if (!newData) {
 			return source;
 		}
@@ -154,76 +154,76 @@ class HttpClient {
 }
 
 export class Chunkai {
-	private options: Options;
-	private httpClient?: HttpClient;
-	private chunkQueue: Chunk[];
-	private processingChunk: boolean;
+	private $$options: Options;
+	private $$httpClient?: HttpClient;
+	private $$chunkQueue: Chunk[];
+	private $$processingChunk: boolean;
 
 	onProgress?: (progress: Progress) => void;
 	onComplete?: (progress: Progress) => void;
 	onAbort?: () => void;
 	onError?: (err: Error) => void;
 
-	private storage: DeviceStorage;
+	private $$storage: DeviceStorage;
 
 	constructor(options: Options) {
-		this.chunkQueue = [];
-		this.processingChunk = false;
-		this.options = options;
+		this.$$chunkQueue = [];
+		this.$$processingChunk = false;
+		this.$$options = options;
 		const storage = Storage.getStorageFromName(options.storageName);
 		if (!storage) throw new Error("Storage not found");
-		this.storage = storage;
+		this.$$storage = storage;
 	}
 
 	async start(): Promise<void> {
-		if (this.httpClient) {
+		if (this.$$httpClient) {
 			console.log("Already downloading a file");
 			return;
 		}
-		await Storage.delete(this.storage, this.options.localFileUrl);
-		await Storage.addNamed(this.storage, new Blob(), this.options.localFileUrl);
+		await Storage.delete(this.$$storage, this.$$options.localFileUrl);
+		await Storage.addNamed(this.$$storage, new Blob(), this.$$options.localFileUrl);
 
-		this.httpClient = new HttpClient({
-			chunkByteLimit: this.options.chunkByteLimit || 3145728,
+		this.$$httpClient = new HttpClient({
+			chunkByteLimit: this.$$options.chunkByteLimit || 3145728,
 		});
-		this.httpClient.onProgress = (chunk) => {
-			this.chunkQueue.push(chunk);
-			this.processNextChunk();
+		this.$$httpClient.onProgress = (chunk) => {
+			this.$$chunkQueue.push(chunk);
+			this.$$processNextChunk();
 		};
-		this.httpClient.onError = (err) => this.onError?.(err);
-		this.httpClient.download(this.options.remoteFileUrl);
+		this.$$httpClient.onError = (err) => this.onError?.(err);
+		this.$$httpClient.download(this.$$options.remoteFileUrl);
 	}
 
 	abort() {
-		if (!this.httpClient) return;
+		if (!this.$$httpClient) return;
 
-		this.httpClient.abort();
+		this.$$httpClient.abort();
 		this.onAbort?.();
 	}
 
-	private async processNextChunk() {
-		if (this.processingChunk) return;
+	private async $$processNextChunk() {
+		if (this.$$processingChunk) return;
 
-		this.processingChunk = true;
-		const chunk = this.chunkQueue[0];
+		this.$$processingChunk = true;
+		const chunk = this.$$chunkQueue[0];
 		if (!chunk) {
-			this.processingChunk = false;
+			this.$$processingChunk = false;
 			return;
 		}
 		// console.log(
 		//   `Process chunk ${chunk.part} (${chunk.endBytes}/${chunk.totalBytes}) (Queue length ${this.chunkQueue.length})`
 		// );
-		await Storage.appendNamed(this.storage, new Blob([chunk.data]), this.options.localFileUrl);
+		await Storage.appendNamed(this.$$storage, new Blob([chunk.data]), this.$$options.localFileUrl);
 
-		this.chunkQueue.shift();
+		this.$$chunkQueue.shift();
 
 		this.onProgress?.({ currentBytes: chunk.endBytes, totalBytes: chunk.totalBytes });
 
 		if (chunk.endBytes === chunk.totalBytes) {
 			this.onComplete?.({ currentBytes: chunk.endBytes, totalBytes: chunk.totalBytes });
 		} else {
-			this.processingChunk = false;
-			await this.processNextChunk();
+			this.$$processingChunk = false;
+			await this.$$processNextChunk();
 		}
 	}
 }

@@ -2,7 +2,14 @@ import { decryptDownload } from "d-fi-core";
 
 console.info("decrypt worker init");
 
+const abortList = new Set<string>();
+
 addEventListener("message", async (e: MessageEvent) => {
+	if (e.data.abort) {
+		abortList.add(e.data.abort);
+		return;
+	}
+
 	const {
 		data: { trackID, buffer: data },
 	} = e;
@@ -13,7 +20,8 @@ addEventListener("message", async (e: MessageEvent) => {
 		(n) => {
 			postMessage({ trackID, progress: n });
 		},
-		false
+		false,
+		() => abortList.has(trackID)
 	);
 
 	// @ts-ignore

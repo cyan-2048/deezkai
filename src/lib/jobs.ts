@@ -10,6 +10,8 @@ import { getTrackDownloadUrl, getTrackInfo, initDeezerApi } from "d-fi-core";
 import { trackType } from "d-fi-core/src/types";
 import { AnyComponent } from "preact";
 
+export type { Job };
+
 const ticker = new EventEmitter();
 const tick = ticker.emit.bind(ticker, "tick");
 
@@ -51,21 +53,21 @@ class Job<T = any, R extends Record<string, any> = any> extends EventEmitter<Job
 		this.#deffered.resolve(output);
 		this.emit("done", output);
 		this.setState("done");
-		this.cancelProgressEvent?.();
+		this.$$cancelProgressEvent?.();
 	}
 
 	progress(progress: number) {
 		this.emit("progress", progress);
 	}
 
-	private currentState: JobStates = "pending";
+	private $$currentState: JobStates = "pending";
 
 	get state() {
-		return this.currentState;
+		return this.$$currentState;
 	}
 
 	setState(state: JobStates) {
-		this.currentState = state;
+		this.$$currentState = state;
 		this.emit("state", state);
 	}
 
@@ -77,11 +79,11 @@ class Job<T = any, R extends Record<string, any> = any> extends EventEmitter<Job
 		arr.push(this);
 	}
 
-	private cancelProgressEvent: null | (() => void) = null;
+	private $$cancelProgressEvent: null | (() => void) = null;
 
 	handleProgressEvent(worker: Worker, verify?: (e: any) => boolean) {
-		if (this.cancelProgressEvent) {
-			this.cancelProgressEvent();
+		if (this.$$cancelProgressEvent) {
+			this.$$cancelProgressEvent();
 		}
 
 		const e = ({ data }: MessageEvent) => {
@@ -91,8 +93,10 @@ class Job<T = any, R extends Record<string, any> = any> extends EventEmitter<Job
 		};
 
 		worker.addEventListener("message", e);
-		this.cancelProgressEvent = () => worker.removeEventListener("message", e);
+		this.$$cancelProgressEvent = () => worker.removeEventListener("message", e);
 	}
+
+	abort() {}
 }
 
 const downloading: Download[] = [];
@@ -124,14 +128,15 @@ interface TrackInfoResult {
 interface DownloadResult extends Required<TrackInfoResult> {
 	buffer: ArrayBuffer;
 }
+
 export class Download extends Job<DownloadResult, { progress: number; state: string; info: Required<TrackInfoResult> }> {
 	storage?: DeviceStorage;
 	id?: string;
 	filename?: string;
 
-	constructor(private trackID: string) {
+	constructor(private $$trackID: string) {
 		super();
-		this.push(pendingDownloads);
+		this.push(this.$$parent);
 		tick();
 	}
 
@@ -141,21 +146,28 @@ export class Download extends Job<DownloadResult, { progress: number; state: str
 		}
 	}
 
+	private $$parent: Download[] = pendingDownloads;
+	private $$aborted = false;
+	private $$abort = () => {};
+
 	async start() {
+		if (this.$$aborted) return;
 		this.setState("running");
 		// remove from pending
-		this.remove(pendingDownloads);
+		this.remove(this.$$parent);
 		// add to downloading
-		this.push(downloading);
+		this.push((this.$$parent = downloading));
 
 		const filename = (this.filename = `${folderPath.peek()}temp/${(this.id = uuidv4())}.bin`);
 
-		const trackID = this.trackID;
+		const trackID = this.$$trackID;
 		const track = await getTrackInfo(trackID);
 		const trackData = await getTrackDownloadUrl(track, musicQuality.peek());
 
 		if (!trackData) throw new Error("trackData is missing");
 		this.emit("info", { track, trackData, trackID });
+
+		if (this.$$aborted) return;
 
 		if (import.meta.env.DEV) {
 			// Create a new XHR object
@@ -187,7 +199,8 @@ export class Download extends Job<DownloadResult, { progress: number; state: str
 			};
 
 			// Send the XHR request
-			xhr.send();
+			if (!this.$$aborted) xhr.send();
+			this.$$abort = () => xhr.abort();
 
 			return;
 		}
@@ -223,8 +236,26 @@ export class Download extends Job<DownloadResult, { progress: number; state: str
 
 			tick();
 		};
-		chunkai.onError = (err) => console.log("error", err);
-		chunkai.start();
+
+		const deffered = new DefferedPromise();
+
+		chunkai.onError = (err) => {
+			deffered.reject(err);
+			console.log("chunkai error", err);
+		};
+		if (!this.$$aborted) chunkai.start();
+		this.$$abort = () => chunkai.abort();
+		this.deleteFile();
+
+		await deffered.promise;
+	}
+
+	abort() {
+		this.$$aborted = true;
+		this.$$abort();
+		this.deleteFile();
+		this.remove(this.$$parent);
+		tick();
 	}
 }
 
@@ -240,6 +271,10 @@ const decryptWorker1 = new Worker(new URL("./decrypt.ts", import.meta.url), {
 });
 
 const workersInUse = new Set<Worker>();
+
+if (import.meta.env.DEV) {
+	Object.assign(window, { workersInUse, decryptWorker, decryptWorker1 });
+}
 
 const workersTicker = new EventEmitter();
 
@@ -270,47 +305,86 @@ async function subsribeWorker(): Promise<{
 	};
 }
 
-async function waitForWorker<T = any>(worker: Worker, verify?: (e: MessageEvent) => boolean): Promise<MessageEvent<T>> {
-	return new Promise((res) => {
-		worker.addEventListener("message", function a(e) {
+function waitForWorker<T = any>(worker: Worker, verify?: (e: MessageEvent) => boolean): [Promise<MessageEvent<T>>, () => void] {
+	let _abort = () => {};
+
+	function abort() {
+		_abort();
+	}
+
+	const wait = new Promise<MessageEvent<T>>((res) => {
+		_abort = () => {
+			worker.removeEventListener("message", a);
+		};
+
+		function a(e: MessageEvent) {
 			if (!verify || verify(e)) {
 				res(e);
-				worker.removeEventListener("message", a);
+				_abort();
 			}
-		});
+		}
+
+		worker.addEventListener("message", a);
 	});
+
+	return [wait, abort];
 }
 
 export class Decrypt extends Job<ArrayBuffer> {
-	constructor(private buffer: ArrayBuffer, private trackID: string) {
+	constructor(private $$buffer: ArrayBuffer, private $$trackID: string) {
 		super();
-		this.push(pendingDecrypt);
+		this.push(this.$$parent);
 		tick();
 	}
 
+	private $$parent: Decrypt[] = pendingDecrypt;
+	private $$aborted = false;
+	private $$abort = () => {};
+
 	async start() {
-		this.remove(pendingDecrypt);
-		this.push(decrypting);
+		if (this.$$aborted) return;
+		this.remove(this.$$parent);
+		this.push((this.$$parent = decrypting));
 
 		this.setState("running");
 
 		const subscribedWorker = await subsribeWorker();
+
+		if (this.$$aborted) {
+			subscribedWorker.unsub();
+			return;
+		}
+
 		const worker = subscribedWorker.worker;
 
 		// handle progress events
-		this.handleProgressEvent(worker, (data) => data.trackID == this.trackID);
+		this.handleProgressEvent(worker, (data) => data.trackID == this.$$trackID);
 
-		const wait = waitForWorker(worker, ({ data }) => data?.done == this.trackID);
+		const [wait, waitAbort] = waitForWorker(worker, ({ data }) => data?.done == this.$$trackID);
+
+		this.$$abort = () => {
+			worker.postMessage({ abort: this.$$trackID });
+			waitAbort();
+			subscribedWorker.unsub();
+		};
+
 		// send buffer to worker
-		worker.postMessage({ trackID: this.trackID, buffer: this.buffer }, [this.buffer]);
+		worker.postMessage({ trackID: this.$$trackID, buffer: this.$$buffer }, [this.$$buffer]);
 
 		// decrypting is done
 		this.done((await wait).data.buffer);
 		subscribedWorker.unsub();
 
 		// remove from decrypting
-		this.remove(decrypting);
+		this.remove(this.$$parent);
 
+		tick();
+	}
+
+	abort() {
+		this.$$aborted = true;
+		this.$$abort();
+		this.remove(this.$$parent);
 		tick();
 	}
 }

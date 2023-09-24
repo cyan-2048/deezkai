@@ -9,13 +9,16 @@ export default defineConfig({
 	server: {
 		port: 3000,
 	},
+	esbuild: {
+		mangleProps: /^\$\$/,
+	},
 	build: {
 		target: "es6",
 		cssTarget: "firefox48",
 		cssCodeSplit: false,
 		modulePreload: false,
 		assetsInlineLimit: 0,
-		minify: false,
+		minify: true,
 		ssr: false,
 		rollupOptions: {
 			output: {
