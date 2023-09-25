@@ -1,4 +1,4 @@
-import { back, useInViewEffect, useInViewSignal } from "./ViewHandler";
+import { back, useInView, useInViewEffect, useInViewSignal } from "./ViewHandler";
 import { Navigation, centerScroll, register, unregister } from "src/lib/keys";
 import { setSoftkeys } from "./SoftKeys";
 import { computed, signal } from "@preact/signals";
@@ -23,9 +23,6 @@ function remove(item: QueueItem) {
 }
 
 const events = new EventEmitter();
-
-// test code
-const audio = new Audio();
 
 class QueueItem {
 	progress = signal(0);
@@ -113,7 +110,7 @@ const nav = new Navigation(queue);
 const focusedItemPosition = signal(25);
 
 function MarqueeOrNotItem({ children: item }: { children: QueueItem }) {
-	const focused = nav.index.value == queue.value.indexOf(item);
+	const focused = nav.index.value == queue.value.indexOf(item) && useInView();
 	return focused ? <Marquee>{item.title.value}</Marquee> : <>{item.title.value}</>;
 }
 
@@ -133,17 +130,18 @@ function DownloadItem({ item }: { item: QueueItem }) {
 			setTimeout(() => (cancelled = false), 200);
 			const queue_peek = queue.peek();
 			const currentIndex = queue_peek.indexOf(item);
-			if (index == currentIndex && downloadItemEl?.current) {
+			const downloadItem = downloadItemEl.current;
+			if (index == currentIndex && downloadItem) {
 				//setFocused(true);
-				!noScroll && (await centerScroll(downloadItemEl.current, !inView.peek()));
+				!noScroll && (await centerScroll(downloadItem, !inView.peek()));
 
 				const currentItemPosition = focusedItemPosition.peek();
-				const newItemPosition = downloadItemEl.current.getBoundingClientRect().top;
+				const newItemPosition = downloadItem.getBoundingClientRect().top;
 				const distance = Math.abs(currentItemPosition - newItemPosition);
 
 				//console.log(distance);
 
-				if (index > 3 && index < queue_peek.length - 5 && distance < 50) {
+				if (index > 3 && index < queue_peek.length - 5 && distance < 20) {
 					//	console.log(index, "skip set position", newItemPosition, "distance", distance);
 					return;
 				}
@@ -215,9 +213,8 @@ function FocusedItem() {
 export default function Downloads() {
 	useInViewEffect(() => {
 		console.log("inview Downloads");
-		const c = nav.getLength() ? "Abort" : "";
-		console.log(c);
-		setSoftkeys("Options", c, "Back");
+
+		setSoftkeys("Options", nav.getLength() ? "Abort" : "", "Back");
 
 		if (queue.peek().length == 0) {
 			// start("781592622");

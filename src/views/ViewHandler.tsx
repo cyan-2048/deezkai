@@ -15,7 +15,7 @@ interface View {
 	softkeys?: string[];
 }
 
-const ViewContext = createContext<Signal<boolean>>(signal(false));
+const ViewContext = createContext<View>({} as any);
 
 const views: View[] = [];
 let previousView: View | null = null;
@@ -30,15 +30,19 @@ function getID() {
 }
 
 export function useInView() {
-	return useContext(ViewContext).value;
+	return useContext(ViewContext).inView.value;
 }
 
 export function useInViewSignal() {
+	return useContext(ViewContext).inView;
+}
+
+export function useView() {
 	return useContext(ViewContext);
 }
 
 export function useInViewEffect(cb: EffectCallback) {
-	const inViewSignal = useContext(ViewContext);
+	const inViewSignal = useInViewSignal();
 	useEffect(() => {
 		let unsub: (() => void) | void;
 
@@ -72,14 +76,15 @@ export function forward(el: VNode, options?: ForwardOptions) {
 	}
 
 	const inView = signal(false);
-	views.push({
+	var _view = {
 		inView,
-		el: <ViewContext.Provider value={inView}>{el}</ViewContext.Provider>,
 		_vnode: el,
 		id: getID(),
 		noAnimation: options?.noAnimation,
 		softkeys: options?.softkeys,
-	});
+	} as View;
+	_view.el = <ViewContext.Provider value={_view}>{el}</ViewContext.Provider>;
+	views.push(_view);
 
 	movement.value = [1];
 }

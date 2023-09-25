@@ -1,0 +1,60 @@
+.view {
+	width: 100vw;
+	height: calc(100vh - 30px);
+	position: relative;
+
+	div {
+		position: absolute;
+	}
+}
+
+.cover {
+	width: 100vw;
+	height: 100vw;
+	top: 0;
+	left: 0;
+	background-color: rgb(32, 32, 32);
+	box-shadow: inset 0px -11px 23px -2px rgba(0, 0, 0, 0.7);
+	background-size: cover;
+	background-image: url(https://cdns-images.dzcdn.net/images/cover/c1613c3579a594bce2ebc77bccfaa4e7/500x500.jpg);
+}
+
+.bottom {
+	width: 100vw;
+	height: 50px;
+	bottom: 0;
+	left: 0;
+	background: linear-gradient(to top, transparent 8%, hsl(220, 6%, 29.2%) 100%);
+	background-color: hsl(210, 9.1%, 4.3%);
+
+	.text {
+		height: 20px;
+		width: calc(100vw - 14px);
+		top: 0;
+		left: 7px;
+		padding: 3px 0;
+		line-height: 1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
+.progress {
+	background: linear-gradient(to top, transparent 10%, rgba(234, 234, 234) 100%);
+	background-color: rgba(155, 155, 155);
+	height: 5px;
+	width: 100vw;
+	bottom: 0;
+	left: 0;
+	overflow: hidden;
+
+	.bar {
+		top: 0;
+		left: 0;
+		height: 100%;
+		border-radius: 10px;
+		width: 0%;
+		background: orange;
+	}
+}
