@@ -70,6 +70,8 @@ interface ForwardOptions {
 export function forward(el: VNode, options?: ForwardOptions) {
 	const current = views.at(-1);
 
+	if (current?._vnode == el) return;
+
 	if (current) {
 		// console.log("revoking", current._vnode.type);
 		current.inView.value = false;
@@ -195,8 +197,8 @@ class ViewHandlerV2 extends PureComponent {
 				// animate the next view
 				e.dom.className = currentMove;
 				if (e.current && e.current != currentView?._vnode) {
-					unmountComponentAtNode(e.dom);
-					console.log("unmount");
+					const result = unmountComponentAtNode(e.dom);
+					console.log("unmount", result);
 					delete e.current;
 					delete e.inView;
 				}

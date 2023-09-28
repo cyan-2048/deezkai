@@ -16,7 +16,7 @@
 	background-color: rgb(32, 32, 32);
 	box-shadow: inset 0px -11px 23px -2px rgba(0, 0, 0, 0.7);
 	background-size: cover;
-	background-image: url(https://cdns-images.dzcdn.net/images/cover/c1613c3579a594bce2ebc77bccfaa4e7/500x500.jpg);
+	background-image: var(--cover);
 }
 
 .bottom {
@@ -37,6 +37,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		text-align: center;
 	}
 }
 
@@ -57,4 +58,11 @@
 		width: 0%;
 		background: orange;
 	}
+}
+
+.time {
+	bottom: 10px;
+	left: 7px;
+	font-weight: 600;
+	font-size: 14px;
 }

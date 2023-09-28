@@ -1,7 +1,7 @@
 import { back, useInView, useInViewEffect, useInViewSignal } from "./ViewHandler";
 import { Navigation, centerScroll, register, unregister } from "src/lib/keys";
 import { setSoftkeys } from "./SoftKeys";
-import { computed, signal } from "@preact/signals";
+import { computed, signal, useComputed } from "@preact/signals";
 import { v4 as uuidv4 } from "uuid";
 import { Decrypt, Download, Job } from "src/lib/jobs";
 import { albumCoverURL, clx, sleep } from "@utils";
@@ -12,6 +12,8 @@ import { MutableRef, useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { FunctionalComponent } from "preact";
 import Marquee from "./components/Marquee";
 import EventEmitter from "src/lib/EventEmitter";
+import { addSongToQueue, playSong } from "./Player";
+import { trackType } from "d-fi-core/src/types";
 
 const queue = signal<QueueItem[]>([]);
 const queue_empty = computed(() => queue.value.length == 0);
@@ -53,9 +55,12 @@ class QueueItem {
 		});
 		this.state.value = "Downloading";
 
-		download.once("info", ({ detail: { track } }) => {
-			this.title.value = track.ART_NAME + " - " + track.SNG_TITLE;
-			this.imageSrc.value = albumCoverURL(track.ALB_PICTURE, 56);
+		let track!: trackType;
+
+		download.once("info", ({ detail: { track: _track } }) => {
+			this.title.value = _track.ART_NAME + " - " + _track.SNG_TITLE;
+			this.imageSrc.value = albumCoverURL(_track.ALB_PICTURE, 56);
+			track = _track;
 		});
 
 		const downloadOutput = await download.promise;
@@ -80,6 +85,16 @@ class QueueItem {
 
 			buffer = decryptOutput;
 		}
+
+		addSongToQueue({
+			info: {
+				title: track.SNG_TITLE,
+				artist: track.ART_NAME,
+				album: track.ALB_TITLE,
+				albumArt: albumCoverURL(track.ALB_PICTURE, 240),
+			},
+			blob: new Blob([buffer]),
+		});
 
 		this.$$currentWork = null;
 		this.state.value = "Done";
@@ -110,8 +125,13 @@ const nav = new Navigation(queue);
 const focusedItemPosition = signal(25);
 
 function MarqueeOrNotItem({ children: item }: { children: QueueItem }) {
-	const focused = nav.index.value == queue.value.indexOf(item) && useInView();
-	return focused ? <Marquee>{item.title.value}</Marquee> : <>{item.title.value}</>;
+	const inView = useInViewSignal();
+	const focused = useComputed(() => nav.index.value == queue.value.indexOf(item) && inView.value);
+	return focused.value ? <Marquee>{item.title.value}</Marquee> : <>{item.title.value}</>;
+}
+
+function DownloadItemProgress({ item }: { item: QueueItem }) {
+	return <div class={styles.bar} style={{ width: item.progress.value + "%" }}></div>;
 }
 
 function DownloadItem({ item }: { item: QueueItem }) {
@@ -182,7 +202,7 @@ function DownloadItem({ item }: { item: QueueItem }) {
 				</div>
 				<div>{item.state.value}</div>
 				<div class={styles.progress}>
-					<div class={styles.bar} style={{ width: item.progress.value + "%" }}></div>
+					<DownloadItemProgress item={item} />
 				</div>
 			</div>
 		</div>
@@ -210,6 +230,16 @@ function FocusedItem() {
 	return <div style={{ top: focusedItemPosition.value, opacity: queue_empty.value ? 0 : undefined }} class={clx("view_animation", styles.focus_item)}></div>;
 }
 
+function DownloadItemContainer() {
+	return (
+		<>
+			{queue.value.map((item) => (
+				<DownloadItem key={item.id} item={item} />
+			))}
+		</>
+	);
+}
+
 export default function Downloads() {
 	useInViewEffect(() => {
 		console.log("inview Downloads");
@@ -217,7 +247,7 @@ export default function Downloads() {
 		setSoftkeys("Options", nav.getLength() ? "Abort" : "", "Back");
 
 		if (queue.peek().length == 0) {
-			// start("781592622");
+			//start("781592622");
 			//start("1053797822");
 
 			start("2355587695");
@@ -271,9 +301,7 @@ export default function Downloads() {
 			<Header>Downloads</Header>
 			<Body>
 				<FocusedItem />
-				{queue.value.map((item) => (
-					<DownloadItem key={item.id} item={item} />
-				))}
+				<DownloadItemContainer />
 			</Body>
 		</main>
 	);

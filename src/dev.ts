@@ -3,6 +3,7 @@ import * as deezer from "d-fi-core";
 import * as utils from "@utils";
 import * as React from "preact/compat";
 import * as jobs from "./lib/jobs";
+import * as Player from "./views/Player";
 
 import { Buffer } from "d-fi-core/src/lib/buffer.js";
 
@@ -10,7 +11,7 @@ import { Buffer } from "d-fi-core/src/lib/buffer.js";
 
 import * as views from "./views/ViewHandler.js";
 
-Object.assign(window, { settings, deezer, utils, React, views, jobs, Buffer, disableScroll, enableScroll });
+Object.assign(window, { settings, deezer, utils, Player, React, views, jobs, Buffer, disableScroll, enableScroll });
 
 function softkey(e: KeyboardEvent) {
 	const { target, key, bubbles, cancelable, repeat, type } = e;

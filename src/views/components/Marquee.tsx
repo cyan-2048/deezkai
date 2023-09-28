@@ -29,6 +29,9 @@ export default function Marquee(props: { children: string | string[] }) {
 		const preciseTime = string.length / 15;
 		const time = Math.ceil(preciseTime) * 1000 + 2000;
 
+		element.style.transform = "";
+		element.style.setProperty("--time", null);
+
 		const setTransform = () => {
 			element.style.transform = `translateX(${-marquee + "px"})`;
 			element.style.setProperty("--time", preciseTime.toFixed(2) + "s");

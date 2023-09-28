@@ -43,9 +43,11 @@ forward(<Home />, {
 	softkeys: ["Options", "Open", "Exit"],
 });
 
+const _player = <Player />;
+
 Object.assign(window, {
 	openPlayer() {
-		forward(<Player />, {
+		forward(_player, {
 			softkeys: ["Options", "", "Back"],
 		});
 	},

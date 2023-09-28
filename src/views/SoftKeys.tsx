@@ -1,9 +1,12 @@
 import { signal } from "@preact/signals";
 import styles from "./SoftKeys.module.scss";
+import { VNode } from "preact";
 
-const keys = signal(["LSK", "Center", "RSK"]);
+const keys = signal<SoftKeyProps[]>(["", "", ""]);
 
-export function setSoftkeys(lsk: string, center: string, rsk: string) {
+type SoftKeyProps = VNode | string;
+
+export function setSoftkeys(lsk: SoftKeyProps, center: SoftKeyProps, rsk: SoftKeyProps) {
 	keys.value = [lsk, center, rsk];
 }
 
